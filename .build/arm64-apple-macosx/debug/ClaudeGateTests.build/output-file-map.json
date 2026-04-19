@@ -1,0 +1,11 @@
+{
+  "": {
+    "swift-dependencies": "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateTests.build/master.swiftdeps"
+  },
+  "~/Developer/claude-gate/Tests/ClaudeGateTests/ClaudeGateTests.swift": {
+    "dependencies": "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateTests.build/ClaudeGateTests.d",
+    "object": "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateTests.build/ClaudeGateTests.swift.o",
+    "swiftmodule": "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateTests.build/ClaudeGateTests~partial.swiftmodule",
+    "swift-dependencies": "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateTests.build/ClaudeGateTests.swiftdeps"
+  }
+}

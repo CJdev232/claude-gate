@@ -1,0 +1,375 @@
+{
+  "builtTestProducts" : [
+
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.ClaudeGate-arm64-apple-macosx15.0-debug.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build/sources",
+      "importPath" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "~/Developer/claude-gate/Sources/ClaudeGate/main.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules/ClaudeGateLib.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build/sources"
+        }
+      ],
+      "isLibrary" : false,
+      "moduleName" : "ClaudeGate",
+      "moduleOutputPath" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules/ClaudeGate.swiftmodule",
+      "objects" : [
+        "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build/main.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-enable-batch-mode",
+        "-index-store-path",
+        "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-module-cache-path",
+        "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-Xfrontend",
+        "-entry-point-function-name",
+        "-Xfrontend",
+        "ClaudeGate_main",
+        "-swift-version",
+        "5",
+        "-F",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "claude_gate"
+      ],
+      "outputFileMapPath" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build/main.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules/ClaudeGate.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "~/Developer/claude-gate/Sources/ClaudeGate/main.swift"
+      ],
+      "tempsPath" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.ClaudeGateLib-arm64-apple-macosx15.0-debug.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/sources",
+      "importPath" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "~/Developer/claude-gate/Sources/ClaudeGateLib/AppDelegate.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "ClaudeGateLib",
+      "moduleOutputPath" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules/ClaudeGateLib.swiftmodule",
+      "objects" : [
+        "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/AppDelegate.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-enable-batch-mode",
+        "-index-store-path",
+        "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-module-cache-path",
+        "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/ClaudeGateLib-Swift.h",
+        "-swift-version",
+        "5",
+        "-F",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "claude_gate"
+      ],
+      "outputFileMapPath" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/AppDelegate.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules/ClaudeGateLib.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "~/Developer/claude-gate/Sources/ClaudeGateLib/AppDelegate.swift"
+      ],
+      "tempsPath" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "ClaudeGate" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "ClaudeGate",
+      "-package-name",
+      "claude_gate",
+      "-incremental",
+      "-c",
+      "~/Developer/claude-gate/Sources/ClaudeGate/main.swift",
+      "-I",
+      "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-enable-batch-mode",
+      "-index-store-path",
+      "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-module-cache-path",
+      "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-Xfrontend",
+      "-entry-point-function-name",
+      "-Xfrontend",
+      "ClaudeGate_main",
+      "-swift-version",
+      "5",
+      "-F",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "claude_gate",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ],
+    "ClaudeGateLib" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "ClaudeGateLib",
+      "-package-name",
+      "claude_gate",
+      "-incremental",
+      "-c",
+      "~/Developer/claude-gate/Sources/ClaudeGateLib/AppDelegate.swift",
+      "-I",
+      "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-enable-batch-mode",
+      "-index-store-path",
+      "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-module-cache-path",
+      "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/ClaudeGateLib-Swift.h",
+      "-swift-version",
+      "5",
+      "-F",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "claude_gate",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "ClaudeGate" : [
+      "ClaudeGateLib"
+    ],
+    "ClaudeGateLib" : [
+
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+
+  },
+  "traitConfiguration" : {
+    "enableAllTraits" : false
+  },
+  "writeCommands" : {
+    "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "~/Developer/claude-gate/Sources/ClaudeGate/main.swift"
+        }
+      ],
+      "outputFilePath" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build/sources"
+    },
+    "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "~/Developer/claude-gate/Sources/ClaudeGateLib/AppDelegate.swift"
+        }
+      ],
+      "outputFilePath" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/sources"
+    },
+    "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate-entitlement.plist" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<entitlement-plist>"
+        },
+        {
+          "kind" : "virtual",
+          "name" : "<com.apple.security.get-task-allow>"
+        }
+      ],
+      "outputFilePath" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate-entitlement.plist"
+    },
+    "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build/main.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/AppDelegate.swift.o"
+        }
+      ],
+      "outputFilePath" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate.product/Objects.LinkFileList"
+    },
+    "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+    }
+  }
+}

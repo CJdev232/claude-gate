@@ -1,0 +1,4 @@
+module ClaudeGateLib {
+    header "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/ClaudeGateLib-Swift.h"
+    requires objc
+}

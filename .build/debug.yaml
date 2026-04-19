@@ -1,0 +1,103 @@
+client:
+  name: basic
+  file-system: device-agnostic
+tools: {}
+targets:
+  "ClaudeGate-arm64-apple-macosx15.0-debug.module": ["<ClaudeGate-arm64-apple-macosx15.0-debug.module>"]
+  "ClaudeGateLib-arm64-apple-macosx15.0-debug.module": ["<ClaudeGateLib-arm64-apple-macosx15.0-debug.module>"]
+  "PackageStructure": ["<PackageStructure>"]
+  "claude-gate-arm64-apple-macosx15.0-debug.exe": ["<claude-gate-arm64-apple-macosx15.0-debug.exe>"]
+  "main": ["<ClaudeGate-arm64-apple-macosx15.0-debug.module>","<ClaudeGateLib-arm64-apple-macosx15.0-debug.module>","<claude-gate-arm64-apple-macosx15.0-debug.exe>"]
+  "test": ["<ClaudeGate-arm64-apple-macosx15.0-debug.module>","<ClaudeGateLib-arm64-apple-macosx15.0-debug.module>","<claude-gate-arm64-apple-macosx15.0-debug.exe>"]
+default: "main"
+nodes:
+  "~/Developer/claude-gate/Sources/ClaudeGate/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "~/Developer/claude-gate/Sources/ClaudeGateLib/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate":
+    is-mutated: true
+commands:
+  "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","~/Developer/claude-gate/Sources/ClaudeGate/main.swift"]
+    outputs: ["~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build/sources"]
+    description: "Write auxiliary file ~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build/sources"
+
+  "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","~/Developer/claude-gate/Sources/ClaudeGateLib/AppDelegate.swift"]
+    outputs: ["~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/sources"]
+    description: "Write auxiliary file ~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/sources"
+
+  "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate-entitlement.plist":
+    tool: write-auxiliary-file
+    inputs: ["<entitlement-plist>","<com.apple.security.get-task-allow>"]
+    outputs: ["~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate-entitlement.plist"]
+    description: "Write auxiliary file ~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate-entitlement.plist"
+
+  "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate.product/Objects.LinkFileList":
+    tool: write-auxiliary-file
+    inputs: ["<link-file-list>","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build/main.swift.o","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/AppDelegate.swift.o"]
+    outputs: ["~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate.product/Objects.LinkFileList"]
+    description: "Write auxiliary file ~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate.product/Objects.LinkFileList"
+
+  "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt":
+    tool: write-auxiliary-file
+    inputs: ["<swift-get-version>","/Library/Developer/CommandLineTools/usr/bin/swiftc"]
+    outputs: ["~/Developer/claude-gate/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"]
+    always-out-of-date: "true"
+    description: "Write auxiliary file ~/Developer/claude-gate/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+
+  "<ClaudeGate-arm64-apple-macosx15.0-debug.module>":
+    tool: phony
+    inputs: ["~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build/main.swift.o","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules/ClaudeGate.swiftmodule"]
+    outputs: ["<ClaudeGate-arm64-apple-macosx15.0-debug.module>"]
+
+  "<ClaudeGateLib-arm64-apple-macosx15.0-debug.module>":
+    tool: phony
+    inputs: ["~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/AppDelegate.swift.o","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules/ClaudeGateLib.swiftmodule"]
+    outputs: ["<ClaudeGateLib-arm64-apple-macosx15.0-debug.module>"]
+
+  "<claude-gate-arm64-apple-macosx15.0-debug.exe>":
+    tool: phony
+    inputs: ["<claude-gate-arm64-apple-macosx15.0-debug.exe-CodeSigning>"]
+    outputs: ["<claude-gate-arm64-apple-macosx15.0-debug.exe>"]
+
+  "C.ClaudeGate-arm64-apple-macosx15.0-debug.module":
+    tool: shell
+    inputs: ["~/Developer/claude-gate/Sources/ClaudeGate/main.swift","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules/ClaudeGateLib.swiftmodule","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build/sources"]
+    outputs: ["~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build/main.swift.o","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules/ClaudeGate.swiftmodule"]
+    description: "Compiling Swift Module 'ClaudeGate' (1 sources)"
+    args: ["/Library/Developer/CommandLineTools/usr/bin/swiftc","-module-name","ClaudeGate","-emit-dependencies","-emit-module","-emit-module-path","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules/ClaudeGate.swiftmodule","-output-file-map","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build/output-file-map.json","-incremental","-c","@~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build/sources","-I","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx14.0","-enable-batch-mode","-index-store-path","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/index/store","-Onone","-enable-testing","-j8","-DSWIFT_PACKAGE","-DDEBUG","-module-cache-path","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-Xfrontend","-entry-point-function-name","-Xfrontend","ClaudeGate_main","-swift-version","5","-F","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-sdk","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-g","-Xcc","-isysroot","-Xcc","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-Xcc","-fPIC","-Xcc","-g","-package-name","claude_gate"]
+
+  "C.ClaudeGateLib-arm64-apple-macosx15.0-debug.module":
+    tool: shell
+    inputs: ["~/Developer/claude-gate/Sources/ClaudeGateLib/AppDelegate.swift","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/sources"]
+    outputs: ["~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/AppDelegate.swift.o","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules/ClaudeGateLib.swiftmodule"]
+    description: "Compiling Swift Module 'ClaudeGateLib' (1 sources)"
+    args: ["/Library/Developer/CommandLineTools/usr/bin/swiftc","-module-name","ClaudeGateLib","-emit-dependencies","-emit-module","-emit-module-path","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules/ClaudeGateLib.swiftmodule","-output-file-map","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/output-file-map.json","-parse-as-library","-incremental","-c","@~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/sources","-I","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx14.0","-enable-batch-mode","-index-store-path","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/index/store","-Onone","-enable-testing","-j8","-DSWIFT_PACKAGE","-DDEBUG","-module-cache-path","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-parse-as-library","-emit-objc-header","-emit-objc-header-path","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/ClaudeGateLib-Swift.h","-swift-version","5","-F","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-sdk","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-g","-Xcc","-isysroot","-Xcc","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-Xcc","-fPIC","-Xcc","-g","-package-name","claude_gate"]
+
+  "C.claude-gate-arm64-apple-macosx15.0-debug.exe":
+    tool: shell
+    inputs: ["~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGate.build/main.swift.o","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/ClaudeGateLib.build/AppDelegate.swift.o","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate.product/Objects.LinkFileList"]
+    outputs: ["~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate"]
+    description: "Linking ./.build/arm64-apple-macosx/debug/claude-gate"
+    args: ["/Library/Developer/CommandLineTools/usr/bin/swiftc","-L","~/Developer/claude-gate/.build/arm64-apple-macosx/debug","-o","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate","-module-name","claude_gate","-Xlinker","-no_warn_duplicate_libraries","-emit-executable","-Xlinker","-alias","-Xlinker","_ClaudeGate_main","-Xlinker","_main","-Xlinker","-rpath","-Xlinker","@loader_path","@~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate.product/Objects.LinkFileList","-target","arm64-apple-macosx14.0","-framework","Network","-framework","AppKit","-framework","SwiftUI","-framework","ServiceManagement","-Xlinker","-add_ast_path","-Xlinker","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules/ClaudeGate.swiftmodule","-Xlinker","-add_ast_path","-Xlinker","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/Modules/ClaudeGateLib.swiftmodule","-F","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-sdk","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-g","-Xlinker","-rpath","-Xlinker","/Library/Developer/CommandLineTools/Library/Developer/Frameworks"]
+
+  "C.claude-gate-arm64-apple-macosx15.0-debug.exe-entitlements":
+    tool: shell
+    inputs: ["~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate-entitlement.plist"]
+    outputs: ["<claude-gate-arm64-apple-macosx15.0-debug.exe-CodeSigning>"]
+    description: "Applying debug entitlements to ./.build/arm64-apple-macosx/debug/claude-gate"
+    args: ["codesign","--force","--sign","-","--entitlements","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate-entitlement.plist","~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude-gate"]
+
+  "PackageStructure":
+    tool: package-structure-tool
+    inputs: ["~/Developer/claude-gate/Sources/ClaudeGate/","~/Developer/claude-gate/Sources/ClaudeGateLib/","~/Developer/claude-gate/Package.swift","~/Developer/claude-gate/Package.resolved"]
+    outputs: ["<PackageStructure>"]
+    description: "Planning build"
+    allow-missing-inputs: true
+
