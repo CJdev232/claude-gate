@@ -1,4 +1,0 @@
-module claude_gatePackageTests {
-    header "~/Developer/claude-gate/.build/arm64-apple-macosx/debug/claude_gatePackageTests.build/claude-gatePackageTests-Swift.h"
-    requires objc
-}
