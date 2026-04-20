@@ -9,6 +9,7 @@ public final class StatusItemController {
     private var config: PolicyConfig
     private let configURL: URL
     private var clickMonitor: Any?
+    private var wasAutoOpened = false
 
     private static let orangeColor = NSColor(
         red: 230/255, green: 159/255, blue: 0, alpha: 1  // #E69F00
@@ -46,6 +47,7 @@ public final class StatusItemController {
         if popover.isShown {
             closePopover()
         } else if let btn = statusItem.button {
+            wasAutoOpened = false          // user-initiated open
             popover.show(relativeTo: btn.bounds, of: btn, preferredEdge: .minY)
             clickMonitor = NSEvent.addGlobalMonitorForEvents(
                 matching: [.leftMouseDown, .rightMouseDown]
@@ -56,6 +58,7 @@ public final class StatusItemController {
     private func closePopover() {
         popover.performClose(nil)
         if let m = clickMonitor { NSEvent.removeMonitor(m); clickMonitor = nil }
+        wasAutoOpened = false
     }
 
     public func refreshBadge() {
@@ -72,6 +75,29 @@ public final class StatusItemController {
         } else {
             btn.attributedTitle = NSAttributedString(string: "")
         }
+    }
+
+    /// Auto-opens the popover when requests arrive so user doesn't miss them.
+    public func autoOpenIfNeeded() {
+        guard !popover.isShown,
+              store.pendingRequests.count > 0,
+              let btn = statusItem.button else { return }
+        wasAutoOpened = true
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        popover.show(relativeTo: btn.bounds, of: btn, preferredEdge: .minY)
+        clickMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown]
+        ) { [weak self] _ in self?.closePopover() }
+    }
+
+    /// Auto-closes only if it was auto-opened and all requests have been resolved.
+    public func autoCloseIfEmpty() {
+        guard popover.isShown, wasAutoOpened, store.pendingRequests.isEmpty else { return }
+        closePopover()
+    }
+
+    public func updateConfig(_ newConfig: PolicyConfig) {
+        config = newConfig
     }
 
     private func persistConfig() {

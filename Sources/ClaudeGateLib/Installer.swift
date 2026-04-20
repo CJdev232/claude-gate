@@ -47,14 +47,44 @@ public struct Installer {
 
         // 3. Register hooks in ~/.claude/settings.json
         try modifySettings { hooks in
-            hooks["PermissionRequest"] = [
-                ["type": "http", "url": "http://127.0.0.1:9191/permission"]
-            ]
+            // Register PermissionRequest hook (idempotent)
+            var permReq = (hooks["PermissionRequest"] as? [[String: Any]]) ?? []
+            let alreadyRegistered = permReq.contains { entry in
+                (entry["hooks"] as? [[String: Any]] ?? []).contains {
+                    $0["url"] as? String == "http://127.0.0.1:9191/permission"
+                }
+            }
+            if !alreadyRegistered {
+                permReq.append([
+                    "matcher": ".*",
+                    "hooks": [["type": "http", "url": "http://127.0.0.1:9191/permission"]]
+                ])
+                hooks["PermissionRequest"] = permReq
+            }
+            // Clean up any stale PreToolUse http entries from previous installs
+            if var preToolUse = hooks["PreToolUse"] as? [[String: Any]] {
+                preToolUse.removeAll { entry in
+                    (entry["hooks"] as? [[String: Any]] ?? []).contains {
+                        $0["url"] as? String == "http://127.0.0.1:9191/permission"
+                    }
+                }
+                hooks["PreToolUse"] = preToolUse
+            }
             hooks["SubagentStart"] = [
-                ["type": "command", "command": "/usr/local/bin/claude-gate subagent-start"]
+                [
+                    "matcher": ".*",
+                    "hooks": [
+                        ["type": "command", "command": "/usr/local/bin/claude-gate subagent-start"]
+                    ]
+                ]
             ]
             hooks["SubagentStop"] = [
-                ["type": "command", "command": "/usr/local/bin/claude-gate subagent-stop"]
+                [
+                    "matcher": ".*",
+                    "hooks": [
+                        ["type": "command", "command": "/usr/local/bin/claude-gate subagent-stop"]
+                    ]
+                ]
             ]
         }
 
@@ -66,7 +96,24 @@ public struct Installer {
 
     public static func uninstall() throws {
         try modifySettings { hooks in
-            hooks.removeValue(forKey: "PermissionRequest")
+            // Remove PermissionRequest entry
+            if var permReq = hooks["PermissionRequest"] as? [[String: Any]] {
+                permReq.removeAll { entry in
+                    (entry["hooks"] as? [[String: Any]] ?? []).contains {
+                        $0["url"] as? String == "http://127.0.0.1:9191/permission"
+                    }
+                }
+                hooks["PermissionRequest"] = permReq
+            }
+            // Also clean up any stale PreToolUse http entries
+            if var preToolUse = hooks["PreToolUse"] as? [[String: Any]] {
+                preToolUse.removeAll { entry in
+                    (entry["hooks"] as? [[String: Any]] ?? []).contains {
+                        $0["url"] as? String == "http://127.0.0.1:9191/permission"
+                    }
+                }
+                hooks["PreToolUse"] = preToolUse
+            }
             hooks.removeValue(forKey: "SubagentStart")
             hooks.removeValue(forKey: "SubagentStop")
         }

@@ -27,16 +27,22 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         let ctrl = StatusItemController(store: store, config: config, configURL: configURL)
         self.statusController = ctrl
 
-        // Badge refresh — 0.2s poll is fine for ambient UI
-        Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak ctrl] _ in
-            Task { @MainActor in ctrl?.refreshBadge() }
+        // Badge + auto-open refresh — use .common so it fires even during modal dialogs
+        let timer = Timer(timeInterval: 0.2, repeats: true) { [weak ctrl] _ in
+            Task { @MainActor in
+                ctrl?.refreshBadge()
+                ctrl?.autoOpenIfNeeded()
+                ctrl?.autoCloseIfEmpty()
+            }
         }
+        RunLoop.main.add(timer, forMode: .common)
 
-        // Hot-reload: push new config to running server when file changes
+        // Hot-reload: push new config to both server and UI when file changes
         let configURL = self.configURL
-        self.fileWatcher = FileWatcher(url: configURL) { [weak server] in
+        self.fileWatcher = FileWatcher(url: configURL) { [weak server, weak ctrl] in
             if let newCfg = try? PolicyConfig.load(from: configURL) {
                 server?.updateConfig(newCfg)
+                Task { @MainActor in ctrl?.updateConfig(newCfg) }
             }
         }
     }

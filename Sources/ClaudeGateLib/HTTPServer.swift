@@ -79,12 +79,16 @@ public final class HTTPServer {
         guard let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
               let toolName  = json["tool_name"]  as? String,
               let sessionID = json["session_id"] as? String else {
-            reply(conn, json: ["decision": "deny"]); return
+            replyPermission(conn, behavior: "deny"); return
         }
 
         let inputPreview: String
         if let toolInput = json["tool_input"] as? [String: Any] {
-            inputPreview = toolInput.values.compactMap { $0 as? String }.first ?? ""
+            // Check known high-signal keys first; fall back to first string value
+            let priorityKeys = ["command", "file_path", "query", "url"]
+            inputPreview = priorityKeys.compactMap { toolInput[$0] as? String }.first
+                ?? toolInput.values.compactMap { $0 as? String }.first
+                ?? ""
         } else {
             inputPreview = ""
         }
@@ -95,9 +99,9 @@ public final class HTTPServer {
 
         switch policyValue {
         case .allow:
-            reply(conn, json: ["decision": "allow"])
+            replyPermission(conn, behavior: "allow")
         case .deny:
-            reply(conn, json: ["decision": "deny"])
+            replyPermission(conn, behavior: "deny")
         case .ask:
             let decision = await askUser(
                 toolName: toolName,
@@ -106,7 +110,7 @@ public final class HTTPServer {
                 timeoutSecs: config.server.timeout,
                 timeoutPolicy: pol.timeout
             )
-            reply(conn, json: ["decision": decision == .allow ? "allow" : "deny"])
+            replyPermission(conn, behavior: decision == .allow ? "allow" : "deny")
         }
     }
 
@@ -145,6 +149,22 @@ public final class HTTPServer {
     }
 
     // MARK: - HTTP helpers
+
+    /// Claude Code PermissionRequest response format
+    private func replyPermission(_ conn: NWConnection, behavior: String) {
+        var decision: [String: Any] = ["behavior": behavior]
+        if behavior == "deny" {
+            decision["message"] = "Denied by claude-gate"
+            decision["interrupt"] = false
+        }
+        let json: [String: Any] = [
+            "hookSpecificOutput": [
+                "hookEventName": "PermissionRequest",
+                "decision": decision
+            ]
+        ]
+        reply(conn, json: json)
+    }
 
     private func reply(_ conn: NWConnection, json: [String: Any]) {
         guard let body = try? JSONSerialization.data(withJSONObject: json),
