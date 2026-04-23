@@ -90,7 +90,8 @@ public final class HTTPServer {
     // MARK: - Connection handling
 
     private func handleConnection(_ conn: NWConnection) {
-        conn.start(queue: .global())
+        let connQueue = DispatchQueue(label: "com.claude-gate.conn.\(ObjectIdentifier(conn).hashValue)")
+        conn.start(queue: connQueue)
         var buffer = Data()
 
         func readMore() {
