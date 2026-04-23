@@ -33,24 +33,24 @@ public struct PolicyGridView: View {
                         Text(tool).font(.system(size: 10))
                             .frame(width: 52, alignment: .leading)
                         PolicyCell(value: Binding(
-                            get: { config.policies[tool]!.parent },
-                            set: { config.policies[tool]!.parent = $0; onChanged() }
+                            get: { config.policies[tool]?.parent ?? .ask },
+                            set: { config.policies[tool]?.parent = $0; onChanged() }
                         )).frame(maxWidth: .infinity)
                         PolicyCell(value: Binding(
-                            get: { config.policies[tool]!.subagent },
-                            set: { config.policies[tool]!.subagent = $0; onChanged() }
+                            get: { config.policies[tool]?.subagent ?? .ask },
+                            set: { config.policies[tool]?.subagent = $0; onChanged() }
                         )).frame(maxWidth: .infinity)
                         PolicyCell(value: Binding(
-                            get: { config.policies[tool]!.timeout },
-                            set: { config.policies[tool]!.timeout = $0; onChanged() }
+                            get: { config.policies[tool]?.timeout ?? .ask },
+                            set: { config.policies[tool]?.timeout = $0; onChanged() }
                         )).frame(maxWidth: .infinity)
                         AwayPolicyCell(value: Binding(
-                            get: { config.policies[tool]!.awayWorkspace },
-                            set: { config.policies[tool]!.awayWorkspace = $0; onChanged() }
+                            get: { config.policies[tool]?.awayWorkspace ?? .ask },
+                            set: { config.policies[tool]?.awayWorkspace = $0; onChanged() }
                         )).frame(maxWidth: .infinity)
                         AwayPolicyCell(value: Binding(
-                            get: { config.policies[tool]!.awayOutside },
-                            set: { config.policies[tool]!.awayOutside = $0; onChanged() }
+                            get: { config.policies[tool]?.awayOutside ?? .ask },
+                            set: { config.policies[tool]?.awayOutside = $0; onChanged() }
                         )).frame(maxWidth: .infinity)
                     }
                     .padding(.horizontal, 8).padding(.vertical, 4)

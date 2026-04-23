@@ -49,7 +49,7 @@ public struct MenuBarView: View {
                 .foregroundColor(.secondary)
                 .padding(.vertical, 6)
         }
-        .frame(width: 340)
+        .frame(width: 400)
     }
 
     @ViewBuilder
