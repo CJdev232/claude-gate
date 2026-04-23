@@ -128,7 +128,7 @@ public struct Installer {
     // MARK: - Helpers
 
     private static func modifySettings(_ modify: (inout [String: Any]) -> Void) throws {
-        var root = loadSettings()
+        var root = try loadSettings()
         var hooks = (root["hooks"] as? [String: Any]) ?? [:]
         modify(&hooks)
         root["hooks"] = hooks
@@ -147,11 +147,17 @@ public struct Installer {
         }
     }
 
-    private static func loadSettings() -> [String: Any] {
-        guard FileManager.default.fileExists(atPath: claudeSettingsURL.path),
-              let data = try? Data(contentsOf: claudeSettingsURL),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else { return [:] }
+    private static func loadSettings() throws -> [String: Any] {
+        guard FileManager.default.fileExists(atPath: claudeSettingsURL.path) else {
+            return [:]  // No file yet — fresh start
+        }
+        let data = try Data(contentsOf: claudeSettingsURL)
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw InstallerError.settingsWriteFailed(
+                NSError(domain: "com.claude-gate", code: 1,
+                        userInfo: [NSLocalizedDescriptionKey: "settings.json exists but is not a valid JSON dictionary. Fix it manually before running --install."])
+            )
+        }
         return json
     }
 
