@@ -51,6 +51,31 @@ public final class HTTPServer {
             l.start(queue: .global())
         }
         logger.info("Server started on port \(self.config.server.port)")
+
+        // Persistent crash-recovery handler (replaces the initial continuation-based one)
+        l.stateUpdateHandler = { [weak self] state in
+            guard let self else { return }
+            switch state {
+            case .failed(let error):
+                self.logger.error("Listener failed after startup: \(error). Attempting restart.")
+                self.listener?.cancel()
+                self.listener = nil
+                // One restart attempt
+                Task {
+                    try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                    do {
+                        try await self.start()
+                        self.logger.info("Listener restarted successfully")
+                    } catch {
+                        self.logger.error("Listener restart failed: \(error). Giving up — KeepAlive will restart process.")
+                    }
+                }
+            case .cancelled:
+                self.logger.info("Listener cancelled")
+            default:
+                break
+            }
+        }
     }
 
     public func stop() {
