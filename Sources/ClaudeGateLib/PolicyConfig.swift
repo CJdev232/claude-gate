@@ -37,15 +37,16 @@ public struct PolicyConfig: Codable {
         let askAskDeny  = ToolPolicy(parent: .ask,   subagent: .ask,   timeout: .deny)
         let askDenyDeny = ToolPolicy(parent: .ask,   subagent: .deny,  timeout: .deny)
         return PolicyConfig(server: ServerConfig(), policies: [
-            "Read":      allowAll,
-            "Glob":      allowAll,
-            "Grep":      allowAll,
-            "WebFetch":  allowAll,
-            "WebSearch": allowAll,
-            "Task":      allowAll,
-            "Write":     askAskDeny,
-            "Edit":      askAskDeny,
-            "Bash":      askDenyDeny,
+            "Read":             allowAll,
+            "Glob":             allowAll,
+            "Grep":             allowAll,
+            "WebFetch":         allowAll,
+            "WebSearch":        allowAll,
+            "Task":             allowAll,
+            "AskUserQuestion":  allowAll,
+            "Write":            askAskDeny,
+            "Edit":             askAskDeny,
+            "Bash":             askDenyDeny,
         ])
     }
 
