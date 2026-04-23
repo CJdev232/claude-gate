@@ -29,7 +29,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
 
         startServer(server)
 
-        let ctrl = StatusItemController(store: store, config: config, configURL: configURL)
+        let ctrl = StatusItemController(store: store, config: config, configURL: configURL, modeState: modeState)
         self.statusController = ctrl
 
         // Badge + auto-open refresh — use .common so it fires even during modal dialogs
