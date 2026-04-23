@@ -40,6 +40,11 @@ public struct Installer {
             at: configDir, withIntermediateDirectories: true
         )
 
+        // Create log directory for LaunchAgent stdout/stderr
+        let logDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Logs/claude-gate")
+        try FileManager.default.createDirectory(at: logDir, withIntermediateDirectories: true)
+
         // 2. Write default config if absent
         if !FileManager.default.fileExists(atPath: configURL.path) {
             try PolicyConfig.defaultConfig().save(to: configURL)
@@ -153,6 +158,8 @@ public struct Installer {
     private static func installLaunchAgent() throws {
         let dir = launchAgentURL.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
         let plist = """
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" \
@@ -168,21 +175,40 @@ public struct Installer {
             <key>RunAtLoad</key>
             <true/>
             <key>KeepAlive</key>
-            <false/>
+            <true/>
+            <key>ProcessType</key>
+            <string>Interactive</string>
+            <key>StandardOutPath</key>
+            <string>\(home)/Library/Logs/claude-gate/stdout.log</string>
+            <key>StandardErrorPath</key>
+            <string>\(home)/Library/Logs/claude-gate/stderr.log</string>
         </dict>
         </plist>
         """
         try plist.write(to: launchAgentURL, atomically: true, encoding: .utf8)
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/bin/launchctl")
-        task.arguments = ["load", launchAgentURL.path]
-        try? task.run(); task.waitUntilExit()
+
+        // Unload first if already loaded (idempotent)
+        let uid = getuid()
+        let bootout = Process()
+        bootout.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+        bootout.arguments = ["bootout", "gui/\(uid)/com.claude-gate"]
+        bootout.standardOutput = FileHandle.nullDevice
+        bootout.standardError = FileHandle.nullDevice
+        try? bootout.run(); bootout.waitUntilExit()
+
+        let bootstrap = Process()
+        bootstrap.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+        bootstrap.arguments = ["bootstrap", "gui/\(uid)", launchAgentURL.path]
+        try bootstrap.run(); bootstrap.waitUntilExit()
     }
 
     private static func removeLaunchAgent() {
+        let uid = getuid()
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/bin/launchctl")
-        task.arguments = ["unload", launchAgentURL.path]
+        task.arguments = ["bootout", "gui/\(uid)/com.claude-gate"]
+        task.standardOutput = FileHandle.nullDevice
+        task.standardError = FileHandle.nullDevice
         try? task.run(); task.waitUntilExit()
         try? FileManager.default.removeItem(at: launchAgentURL)
     }
