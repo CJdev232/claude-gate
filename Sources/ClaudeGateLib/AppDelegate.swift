@@ -23,10 +23,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         let server = HTTPServer(config: config, tracker: tracker, store: store)
         self.httpServer = server
 
-        Task {
-            do { try await server.start() }
-            catch { logger.error("Server start failed: \(error)") }
-        }
+        startServer(server)
 
         let ctrl = StatusItemController(store: store, config: config, configURL: configURL)
         self.statusController = ctrl
@@ -56,5 +53,45 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
 
     public func applicationWillTerminate(_ notification: Notification) {
         httpServer?.stop()
+    }
+
+    private func startServer(_ server: HTTPServer) {
+        Task {
+            do {
+                try await server.start()
+                logger.info("Server started successfully")
+            } catch {
+                logger.error("Server start failed: \(error)")
+                await handleServerStartFailure(server: server, error: error)
+            }
+        }
+    }
+
+    @MainActor
+    private func handleServerStartFailure(server: HTTPServer, error: Error) {
+        let alert = NSAlert()
+        alert.messageText = "claude-gate: Port In Use"
+        alert.informativeText = "Another process may be using port 9191. Kill it and retry?"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Kill & Retry")
+        alert.addButton(withTitle: "Quit")
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            // Kill whatever holds port 9191
+            let kill = Process()
+            kill.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            kill.arguments = ["bash", "-c", "lsof -ti :9191 | xargs kill -9 2>/dev/null"]
+            kill.standardOutput = FileHandle.nullDevice
+            kill.standardError = FileHandle.nullDevice
+            try? kill.run(); kill.waitUntilExit()
+
+            // Brief delay then retry
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.startServer(server)
+            }
+        } else {
+            NSApplication.shared.terminate(nil)
+        }
     }
 }
