@@ -2,3 +2,9 @@
 *.o
 *.d
 DerivedData/
+
+# Claude research artifacts (raw compass exports)
+compass_artifact_*
+
+# Superpowers brainstorm sessions
+.superpowers/
