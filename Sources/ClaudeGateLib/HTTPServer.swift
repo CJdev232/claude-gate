@@ -47,6 +47,7 @@ public final class HTTPServer {
                 switch state {
                 case .ready:           cont.resume()
                 case .failed(let e):   cont.resume(throwing: e)
+                case .cancelled:       cont.resume(throwing: NWError.posix(.ECANCELED))
                 default:               break
                 }
             }
