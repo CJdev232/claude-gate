@@ -31,7 +31,7 @@ public final class StatusItemController {
     }
 
     private func setupPopover() {
-        popover.behavior = .transient
+        popover.behavior = .applicationDefined
         popover.contentViewController = NSHostingController(
             rootView: MenuBarView(
                 store: store,
@@ -83,8 +83,9 @@ public final class StatusItemController {
               store.pendingRequests.count > 0,
               let btn = statusItem.button else { return }
         wasAutoOpened = true
-        NSApplication.shared.activate(ignoringOtherApps: true)
         popover.show(relativeTo: btn.bounds, of: btn, preferredEdge: .minY)
+        // Float above other windows without stealing focus from terminal
+        popover.contentViewController?.view.window?.level = .floating
         clickMonitor = NSEvent.addGlobalMonitorForEvents(
             matching: [.leftMouseDown, .rightMouseDown]
         ) { [weak self] _ in self?.closePopover() }
