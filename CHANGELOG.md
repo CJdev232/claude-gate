@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0.0] - 2026-04-23
+
+### Fixed
+- CRITICAL: Pin each HTTP connection to a serial dispatch queue, preventing data race on buffer (BUG-025)
+- Handle .cancelled state in listener startup continuation, preventing dangling async caller (BUG-033)
+- Throw on corrupt settings.json instead of silently overwriting user settings (BUG-031)
+- Safe optional chaining in PolicyGridView Binding closures, preventing crash on hot-reload (BUG-030)
+- Read port from config in all locations, removing hardcoded 9191 in subagent hooks, kill-retry, and installer (BUG-019, BUG-027)
+- Widen MenuBarView to 400px to fit 6-column policy grid without clipping (BUG-023)
+- Test script detects existing claude-gate instance before launching, avoiding port-in-use alert
+
 ## [0.2.0.0] - 2026-04-23
 
 ### Added
