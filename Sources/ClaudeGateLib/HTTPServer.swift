@@ -2,6 +2,9 @@ import Foundation
 import Network
 
 public final class HTTPServer {
+    private static let maxRequestSize = 1_048_576  // 1MB
+    private static let initialReadSize = 65_536     // 64KB — covers most requests in one read
+
     private var _config: PolicyConfig
     private let configLock = NSLock()
     private let tracker: SubagentTracker
@@ -56,10 +59,60 @@ public final class HTTPServer {
 
     private func handleConnection(_ conn: NWConnection) {
         conn.start(queue: .global())
-        conn.receive(minimumIncompleteLength: 1, maximumLength: 65_536) { [weak self] data, _, _, _ in
-            guard let self, let data, !data.isEmpty else { conn.cancel(); return }
-            Task { await self.processRequest(data: data, conn: conn) }
+        var buffer = Data()
+
+        func readMore() {
+            conn.receive(minimumIncompleteLength: 1, maximumLength: Self.initialReadSize) { [weak self] data, _, isComplete, error in
+                guard let self else { conn.cancel(); return }
+                if let data, !data.isEmpty {
+                    buffer.append(data)
+                }
+                // Safety: don't accumulate beyond max
+                if buffer.count > Self.maxRequestSize {
+                    self.reply(conn, json: ["error": "request_too_large"])
+                    return
+                }
+                // Check if we have the full request
+                if let headerEnd = buffer.range(of: Data("\r\n\r\n".utf8)) {
+                    let contentLength = self.parseContentLength(from: buffer) ?? 0
+                    let bodyStart = headerEnd.upperBound
+                    let bodyReceivedCount = buffer.count - buffer.distance(from: buffer.startIndex, to: bodyStart)
+
+                    if bodyReceivedCount >= contentLength || isComplete {
+                        // Full request received
+                        Task { await self.processRequest(data: buffer, conn: conn) }
+                        return
+                    }
+                }
+                // Not complete yet — keep reading, or give up if connection closed
+                if isComplete || error != nil {
+                    if buffer.isEmpty {
+                        conn.cancel()
+                    } else {
+                        Task { await self.processRequest(data: buffer, conn: conn) }
+                    }
+                    return
+                }
+                readMore()
+            }
         }
+        readMore()
+    }
+
+    /// Extracts Content-Length from raw HTTP header bytes, returns nil if not found.
+    private func parseContentLength(from data: Data) -> Int? {
+        guard let text = String(data: data, encoding: .utf8),
+              let headerEnd = text.range(of: "\r\n\r\n") else { return nil }
+        let headers = text[..<headerEnd.lowerBound]
+        for line in headers.split(separator: "\r\n") {
+            let parts = line.split(separator: ":", maxSplits: 1)
+            if parts.count == 2,
+               parts[0].trimmingCharacters(in: .whitespaces).lowercased() == "content-length",
+               let len = Int(parts[1].trimmingCharacters(in: .whitespaces)) {
+                return len
+            }
+        }
+        return nil
     }
 
     private func processRequest(data: Data, conn: NWConnection) async {
