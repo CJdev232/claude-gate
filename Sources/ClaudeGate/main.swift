@@ -47,11 +47,14 @@ if args.contains("--restart") {
     }
     if !pids.isEmpty {
         print("Stopping claude-gate (pid \(pids.map(String.init).joined(separator: ", ")))...")
-        // Wait for port 9191 to be free (max 5 seconds)
+        // Wait for port to be free (max 5 seconds)
+        let configURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude-gate/config.json")
+        let port = (try? PolicyConfig.load(from: configURL))?.server.port ?? 9191
         for _ in 0..<50 {
             let check = Process()
             check.executableURL = URL(fileURLWithPath: "/usr/bin/lsof")
-            check.arguments = ["-ti", ":9191"]
+            check.arguments = ["-ti", ":\(port)"]
             check.standardOutput = FileHandle.nullDevice
             check.standardError = FileHandle.nullDevice
             try? check.run(); check.waitUntilExit()
