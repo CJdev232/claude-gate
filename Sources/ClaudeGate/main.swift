@@ -28,6 +28,49 @@ if args.contains("--uninstall") {
     exit(0)
 }
 
+// --restart
+if args.contains("--restart") {
+    // Find and kill existing process
+    let find = Process()
+    find.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
+    find.arguments = ["claude-gate"]
+    let pipe = Pipe()
+    find.standardOutput = pipe
+    find.standardError = FileHandle.nullDevice
+    try? find.run(); find.waitUntilExit()
+    let pids = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
+        .split(separator: "\n")
+        .compactMap { Int32($0) }
+        .filter { $0 != ProcessInfo.processInfo.processIdentifier } ?? []
+    for pid in pids {
+        kill(pid, SIGTERM)
+    }
+    if !pids.isEmpty {
+        print("Stopping claude-gate (pid \(pids.map(String.init).joined(separator: ", ")))...")
+        // Wait for port 9191 to be free (max 5 seconds)
+        for _ in 0..<50 {
+            let check = Process()
+            check.executableURL = URL(fileURLWithPath: "/usr/bin/lsof")
+            check.arguments = ["-ti", ":9191"]
+            check.standardOutput = FileHandle.nullDevice
+            check.standardError = FileHandle.nullDevice
+            try? check.run(); check.waitUntilExit()
+            if check.terminationStatus != 0 { break }  // port free
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+    }
+    // Start new instance by re-exec without --restart
+    let exe = CommandLine.arguments[0]
+    let task = Process()
+    task.executableURL = URL(fileURLWithPath: exe)
+    task.arguments = []
+    task.standardOutput = FileHandle.nullDevice
+    task.standardError = FileHandle.nullDevice
+    try? task.run()
+    print("✓ claude-gate restarted (pid \(task.processIdentifier))")
+    exit(0)
+}
+
 // subagent-start / subagent-stop — called by command hook, reads JSON stdin, POSTs to server
 if let cmd = args.dropFirst().first, cmd == "subagent-start" || cmd == "subagent-stop" {
     let data = FileHandle.standardInput.readDataToEndOfFile()
