@@ -5,7 +5,7 @@
 # Usage: ./scripts/test-all.sh
 # Requirements: claude-gate must NOT be running (this starts its own instance)
 
-set -euo pipefail
+set -uo pipefail
 
 BINARY=".build/release/claude-gate"
 PORT=19191  # Use non-default port to avoid conflict with running instance
@@ -48,7 +48,7 @@ log_result() {
 
 post() {
     local path="$1" body="$2"
-    curl -s "http://127.0.0.1:$PORT$path" \
+    curl -s "http://127.0.0.1:${TEST_PORT:-$PORT}$path" \
         -X POST -d "$body" -H 'Content-Type: application/json' \
         --connect-timeout 3 --max-time 10 2>/dev/null
 }
@@ -104,38 +104,24 @@ else
     log_result "FAIL" "Config JSON valid" "Invalid JSON in test config"
 fi
 
-# Start server (headless — no GUI, just HTTP server)
-# We can't start the full app without window server, so test via direct HTTP
-# Start in background, capture PID
-"$BINARY" 2>/dev/null &
-SERVER_PID=$!
-sleep 2
-
-if kill -0 "$SERVER_PID" 2>/dev/null; then
-    log_result "PASS" "Process starts"
-else
-    # Expected: may crash without window server (BUG-017)
-    # Try to check if it's the codesign issue
-    log_result "SKIP" "Process starts" "No window server access (expected in sandbox/CI)"
-fi
-
-# Check if port is open (the real server uses default config, port 9191)
-# Our test config uses 19191 but the binary reads from ~/.claude-gate/config.json
-# So we test against whatever port the running instance uses
-if lsof -i :9191 -P 2>/dev/null | grep -q LISTEN; then
+# Detect existing instance first (avoid "port in use" NSAlert — see BUG-006)
+if pgrep -x claude-gate >/dev/null 2>&1 && lsof -i :9191 -P 2>/dev/null | grep -q LISTEN; then
     TEST_PORT=9191
-    log_result "PASS" "Server listening on port 9191"
-elif lsof -i :$PORT -P 2>/dev/null | grep -q LISTEN; then
-    TEST_PORT=$PORT
-    log_result "PASS" "Server listening on port $PORT"
+    SERVER_PID=""  # Don't kill the user's running instance
+    log_result "PASS" "Using existing claude-gate on port 9191"
 else
-    # If there's already a running claude-gate, use it
-    if pgrep -x claude-gate >/dev/null 2>&1; then
+    # No running instance — try starting one
+    "$BINARY" 2>/dev/null &
+    SERVER_PID=$!
+    sleep 2
+
+    if kill -0 "$SERVER_PID" 2>/dev/null && lsof -i :9191 -P 2>/dev/null | grep -q LISTEN; then
         TEST_PORT=9191
-        log_result "PASS" "Using existing claude-gate on port 9191"
-        SERVER_PID=""  # Don't kill the user's running instance
+        log_result "PASS" "Started claude-gate on port 9191"
     else
-        log_result "SKIP" "Server listening" "No server available (no window server)"
+        # Process may have crashed (no window server in sandbox/CI)
+        SERVER_PID=""
+        log_result "SKIP" "Server start" "No window server access (expected in sandbox/CI)"
         echo ""
         echo -e "${YELLOW}Cannot test HTTP endpoints without a running server.${NC}"
         echo "Start claude-gate manually first, then re-run this script."
