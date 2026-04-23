@@ -169,6 +169,8 @@ public final class HTTPServer {
             replyPermission(conn, behavior: "deny"); return
         }
 
+        let cwd = json["cwd"] as? String
+
         let inputPreview: String
         let filePath: String?
         if let toolInput = json["tool_input"] as? [String: Any] {
@@ -194,7 +196,13 @@ public final class HTTPServer {
         if alwaysInsideTools.contains(toolName) {
             isInWorkspace = true
         } else if let path = filePath {
-            isInWorkspace = config.isInsideWorkspace(path)
+            // Primary: check if file_path is inside the session's cwd
+            // Fallback: check against configured workspaces
+            if let cwd = cwd {
+                isInWorkspace = path.hasPrefix(cwd + "/") || path == cwd
+            } else {
+                isInWorkspace = config.isInsideWorkspace(path)
+            }
         } else {
             isInWorkspace = false
         }
