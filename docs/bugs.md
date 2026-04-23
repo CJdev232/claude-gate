@@ -182,3 +182,66 @@ When encountering or solving a bug during development, note it here. This includ
 - **Status**: OPEN
 - **Fix**: Normalize ask to deny on load for away columns (enforce invariant), or sanitize on toggle: always write .allow or .deny, never preserve .ask in away columns.
 - **Discovered**: 2026-04-23
+
+### BUG-025: Data race on HTTP buffer (CRITICAL)
+- **Description**: handleConnection uses a mutable `buffer` variable captured by nested readMore() closure. The receive handler runs on `.global()` queue (concurrent). If NWConnection dispatches callbacks on different threads, the buffer can be mutated from multiple threads simultaneously.
+- **Root Cause**: HTTPServer.swift:96 — buffer is a value type (Data) captured by reference through the enclosing function scope. All connection handling uses `.global()` queue instead of a per-connection serial queue.
+- **Status**: OPEN
+- **Fix**: Pin each connection's receive callbacks to a dedicated serial DispatchQueue instead of `.global()`. e.g. `let connQueue = DispatchQueue(label: "gate.conn.\(conn.hashValue)")` and use it for both `conn.start(queue:)` and all receive calls.
+- **Discovered**: 2026-04-23
+
+### BUG-026: Retain cycle in StatusItemController Binding closures
+- **Description**: MenuBarView receives a Binding that captures `self` strongly in both get and set closures. Since MenuBarView is inside the popover's NSHostingController, which is owned by self, this creates a retain cycle: StatusItemController -> popover -> NSHostingController -> MenuBarView -> Binding -> StatusItemController.
+- **Root Cause**: StatusItemController.swift:58-63 — `Binding(get: { self.config }, set: { self.config = $0 })` captures self strongly.
+- **Status**: OPEN
+- **Fix**: Use `[weak self]` in Binding closures with guard: `Binding(get: { [weak self] in self?.config ?? PolicyConfig.defaultConfig() }, set: { [weak self] in self?.config = $0 })`.
+- **Discovered**: 2026-04-23
+
+### BUG-027: Port-in-use kill targets wrong port
+- **Description**: handleServerStartFailure runs `lsof -ti :9191 | xargs kill -9` with hardcoded port. If user configured a different port in config.json, the kill command targets the wrong port.
+- **Root Cause**: AppDelegate.swift:87 — port 9191 hardcoded in the bash -c string instead of reading from config.server.port.
+- **Status**: OPEN
+- **Fix**: Use `config.server.port` in the lsof command string. Requires passing config to the failure handler or reading it fresh.
+- **Discovered**: 2026-04-23
+
+### BUG-028: Timer never invalidated on quit
+- **Description**: The 200ms refresh timer in AppDelegate is created with Timer() and added to RunLoop but never stored as a property. It cannot be invalidated in applicationWillTerminate, so it continues firing after teardown begins.
+- **Root Cause**: AppDelegate.swift:36 — timer is a local variable, not a stored property. applicationWillTerminate stops the server but doesn't invalidate the timer.
+- **Status**: OPEN
+- **Fix**: Store timer as a property (`private var refreshTimer: Timer?`). Invalidate in applicationWillTerminate.
+- **Discovered**: 2026-04-23
+
+### BUG-029: Tilde paths in workspace config never match
+- **Description**: If a user puts `~/Code/project` in the workspaces config array, it never matches because file_path from Claude Code uses absolute paths (~/...) and String.hasPrefix doesn't expand tilde.
+- **Root Cause**: PolicyConfig.swift:108 — isInsideWorkspace does raw string prefix comparison without expanding ~ to the home directory.
+- **Status**: OPEN
+- **Fix**: Call `(ws as NSString).expandingTildeInPath` before prefix comparison.
+- **Discovered**: 2026-04-23
+
+### BUG-030: Force-unwrap in PolicyGridView Binding can crash
+- **Description**: PolicyGridView uses `config.policies[tool]!` in every Binding get/set closure. If a FileWatcher hot-reload removes a tool from the config between the `if != nil` check and the Binding access, the force-unwrap crashes.
+- **Root Cause**: PolicyGridView.swift:35-54 — race between SwiftUI Binding evaluation and config mutation from FileWatcher.
+- **Status**: OPEN
+- **Fix**: Use optional chaining in set closures: `config.policies[tool]?.parent = $0`. In get closures, provide a default: `config.policies[tool]?.parent ?? .ask`.
+- **Discovered**: 2026-04-23
+
+### BUG-031: Corrupt settings.json silently overwritten
+- **Description**: Installer.loadSettings() returns empty dict if settings.json exists but is corrupt JSON. modifySettings() then writes this empty dict + claude-gate hooks back, destroying all other user settings (permissions, env, hooks from other tools).
+- **Root Cause**: Installer.swift:150 — loadSettings returns `[:]` on parse failure instead of propagating the error or refusing to modify.
+- **Status**: OPEN
+- **Fix**: If JSON parse fails, throw an error and refuse to modify. Show the user: "settings.json is corrupt, please fix it manually before running --install."
+- **Discovered**: 2026-04-23
+
+### BUG-032: Keyboard shortcuts fire on all pending request rows
+- **Description**: Ctrl+Shift+Y (allow) and Ctrl+Shift+N (deny) keyboard shortcuts are applied to every RequestRowView. When multiple requests are pending, pressing the shortcut approves/denies ALL requests simultaneously.
+- **Root Cause**: RequestRowView.swift:48,58 — .keyboardShortcut applied inside ForEach, so every row gets the same shortcut. SwiftUI fires all matching buttons.
+- **Status**: OPEN
+- **Fix**: Only apply keyboard shortcuts to the first (topmost) row. Pass an `isFirst: Bool` parameter to RequestRowView and conditionally add the shortcut.
+- **Discovered**: 2026-04-23
+
+### BUG-033: Continuation dangling if listener cancelled before ready
+- **Description**: In HTTPServer.start(), if NWListener enters .cancelled state before reaching .ready, the CheckedContinuation is never resumed. The async caller hangs forever.
+- **Root Cause**: HTTPServer.swift:45-54 — the stateUpdateHandler only handles .ready and .failed, with `default: break` for all other states including .cancelled.
+- **Status**: OPEN
+- **Fix**: Add `.cancelled` case to the startup handler that resumes with an error.
+- **Discovered**: 2026-04-23

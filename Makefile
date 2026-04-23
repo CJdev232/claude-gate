@@ -1,7 +1,7 @@
 BINARY     = .build/release/claude-gate
 INSTALL_TO = /usr/local/bin/claude-gate
 
-.PHONY: build release install uninstall clean
+.PHONY: build release install uninstall clean test
 
 build:
 	swift build
@@ -22,6 +22,10 @@ restart: install
 uninstall:
 	-$(INSTALL_TO) --uninstall
 	rm -f $(INSTALL_TO)
+
+test: release
+	@chmod +x scripts/test-all.sh
+	@./scripts/test-all.sh
 
 clean:
 	rm -rf .build
