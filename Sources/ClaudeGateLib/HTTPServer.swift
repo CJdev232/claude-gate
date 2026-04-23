@@ -10,13 +10,15 @@ public final class HTTPServer {
     private let configLock = NSLock()
     private let tracker: SubagentTracker
     private let store: PermissionStore
+    private let modeState: GateModeState
     private var listener: NWListener?
     private let logger = Logger(subsystem: "com.claude-gate", category: "http")
 
-    public init(config: PolicyConfig, tracker: SubagentTracker, store: PermissionStore) {
+    public init(config: PolicyConfig, tracker: SubagentTracker, store: PermissionStore, modeState: GateModeState) {
         self._config = config
         self.tracker = tracker
         self.store = store
+        self.modeState = modeState
     }
 
     public func updateConfig(_ newConfig: PolicyConfig) {
@@ -168,53 +170,81 @@ public final class HTTPServer {
         }
 
         let inputPreview: String
+        let filePath: String?
         if let toolInput = json["tool_input"] as? [String: Any] {
-            // Check known high-signal keys first; fall back to first string value
             let priorityKeys = ["command", "file_path", "query", "url"]
             inputPreview = priorityKeys.compactMap { toolInput[$0] as? String }.first
                 ?? toolInput.values.compactMap { $0 as? String }.first
                 ?? ""
+            filePath = toolInput["file_path"] as? String
+                ?? toolInput["path"] as? String
         } else {
             inputPreview = ""
+            filePath = nil
         }
 
         let isSubagent = await tracker.isSubagent(sessionID)
         let pol = config.policy(for: toolName)
-        let policyValue = isSubagent ? pol.subagent : pol.parent
+        let mode = await modeState.current
 
-        logger.info("Permission request: \(toolName) [\(isSubagent ? "subagent" : "parent")]")
+        logger.info("Permission request: \(toolName) [\(isSubagent ? "subagent" : "parent")] mode=\(mode.rawValue)")
 
-        switch policyValue {
-        case .allow:
-            replyPermission(conn, behavior: "allow")
-            logger.info("Decision for \(toolName): allow (policy)")
-        case .deny:
-            replyPermission(conn, behavior: "deny")
-            logger.info("Decision for \(toolName): deny (policy)")
-        case .ask:
-            let requestID = UUID()
-            // Monitor connection — if it drops, auto-deny
-            conn.stateUpdateHandler = { [weak self] state in
-                switch state {
-                case .cancelled, .failed:
-                    Task { @MainActor in
-                        self?.store.decide(id: requestID, allow: false)
+        let alwaysInsideTools: Set<String> = ["Task", "AskUserQuestion"]
+        let isInWorkspace: Bool
+        if alwaysInsideTools.contains(toolName) {
+            isInWorkspace = true
+        } else if let path = filePath {
+            isInWorkspace = config.isInsideWorkspace(path)
+        } else {
+            isInWorkspace = false
+        }
+
+        switch mode {
+        case .present, .remote:
+            let policyValue = isSubagent ? pol.subagent : pol.parent
+            switch policyValue {
+            case .allow:
+                replyPermission(conn, behavior: "allow")
+                logger.info("Decision for \(toolName): allow (policy)")
+            case .deny:
+                replyPermission(conn, behavior: "deny")
+                logger.info("Decision for \(toolName): deny (policy)")
+            case .ask:
+                let requestID = UUID()
+                conn.stateUpdateHandler = { [weak self] state in
+                    switch state {
+                    case .cancelled, .failed:
+                        Task { @MainActor in
+                            self?.store.decide(id: requestID, allow: false)
+                        }
+                    default: break
                     }
-                default:
-                    break
                 }
+                let timeoutSecs = mode == .present ? config.server.timeout : config.server.remoteTimeout
+                let decision = await askUser(
+                    id: requestID,
+                    toolName: toolName,
+                    context: isSubagent ? .subagent : .parent,
+                    inputPreview: inputPreview,
+                    timeoutSecs: timeoutSecs,
+                    timeoutPolicy: pol.timeout
+                )
+                conn.stateUpdateHandler = nil
+                replyPermission(conn, behavior: decision == .allow ? "allow" : "deny")
+                logger.info("Decision for \(toolName): \(decision == .allow ? "allow" : "deny") (user)")
             }
-            let decision = await askUser(
-                id: requestID,
-                toolName: toolName,
-                context: isSubagent ? .subagent : .parent,
-                inputPreview: inputPreview,
-                timeoutSecs: config.server.timeout,
-                timeoutPolicy: pol.timeout
-            )
-            conn.stateUpdateHandler = nil  // Clean up after decision
-            replyPermission(conn, behavior: decision == .allow ? "allow" : "deny")
-            logger.info("Decision for \(toolName): \(decision == .allow ? "allow" : "deny") (user)")
+
+        case .away:
+            let awayPolicy = isInWorkspace ? pol.awayWorkspace : pol.awayOutside
+            let behavior: String
+            switch awayPolicy {
+            case .allow:
+                behavior = "allow"
+            case .deny, .ask:
+                behavior = "deny"
+            }
+            replyPermission(conn, behavior: behavior)
+            logger.info("Decision for \(toolName): \(behavior) (away, \(isInWorkspace ? "workspace" : "outside"))")
         }
     }
 

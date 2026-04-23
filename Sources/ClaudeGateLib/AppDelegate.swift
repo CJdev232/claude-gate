@@ -24,7 +24,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         let store   = PermissionStore()
         let config  = (try? PolicyConfig.load(from: configURL)) ?? PolicyConfig.defaultConfig()
 
-        let server = HTTPServer(config: config, tracker: tracker, store: store)
+        let server = HTTPServer(config: config, tracker: tracker, store: store, modeState: modeState)
         self.httpServer = server
 
         startServer(server)
