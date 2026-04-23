@@ -7,6 +7,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     private var httpServer: HTTPServer?
     private var fileWatcher: FileWatcher?
     private let logger = Logger(subsystem: "com.claude-gate", category: "app")
+    private var modeState: GateModeState?
 
     private var configURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
@@ -15,6 +16,9 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
         logger.info("claude-gate launching")
+
+        let modeState = GateModeState()
+        self.modeState = modeState
 
         let tracker = SubagentTracker()
         let store   = PermissionStore()
