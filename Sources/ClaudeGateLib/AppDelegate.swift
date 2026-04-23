@@ -75,17 +75,20 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     private func handleServerStartFailure(server: HTTPServer, error: Error) {
         let alert = NSAlert()
         alert.messageText = "claude-gate: Port In Use"
-        alert.informativeText = "Another process may be using port 9191. Kill it and retry?"
+        let configURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude-gate/config.json")
+        let port = (try? PolicyConfig.load(from: configURL))?.server.port ?? 9191
+        alert.informativeText = "Another process may be using port \(port). Kill it and retry?"
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Kill & Retry")
         alert.addButton(withTitle: "Quit")
 
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
-            // Kill whatever holds port 9191
+            // Kill whatever holds the port
             let kill = Process()
             kill.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            kill.arguments = ["bash", "-c", "lsof -ti :9191 | xargs kill -9 2>/dev/null"]
+            kill.arguments = ["bash", "-c", "lsof -ti :\(port) | xargs kill -9 2>/dev/null"]
             kill.standardOutput = FileHandle.nullDevice
             kill.standardError = FileHandle.nullDevice
             try? kill.run(); kill.waitUntilExit()

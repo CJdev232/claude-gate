@@ -50,19 +50,24 @@ public struct Installer {
             try PolicyConfig.defaultConfig().save(to: configURL)
         }
 
+        // Load config to get the configured port
+        let config = try PolicyConfig.load(from: configURL)
+        let port = config.server.port
+        let hookURL = "http://127.0.0.1:\(port)/permission"
+
         // 3. Register hooks in ~/.claude/settings.json
         try modifySettings { hooks in
             // Register PermissionRequest hook (idempotent)
             var permReq = (hooks["PermissionRequest"] as? [[String: Any]]) ?? []
             let alreadyRegistered = permReq.contains { entry in
                 (entry["hooks"] as? [[String: Any]] ?? []).contains {
-                    $0["url"] as? String == "http://127.0.0.1:9191/permission"
+                    $0["url"] as? String == hookURL
                 }
             }
             if !alreadyRegistered {
                 permReq.append([
                     "matcher": ".*",
-                    "hooks": [["type": "http", "url": "http://127.0.0.1:9191/permission"]]
+                    "hooks": [["type": "http", "url": hookURL]]
                 ])
                 hooks["PermissionRequest"] = permReq
             }
@@ -70,7 +75,7 @@ public struct Installer {
             if var preToolUse = hooks["PreToolUse"] as? [[String: Any]] {
                 preToolUse.removeAll { entry in
                     (entry["hooks"] as? [[String: Any]] ?? []).contains {
-                        $0["url"] as? String == "http://127.0.0.1:9191/permission"
+                        $0["url"] as? String == hookURL
                     }
                 }
                 hooks["PreToolUse"] = preToolUse
@@ -100,12 +105,14 @@ public struct Installer {
     // MARK: - Uninstall
 
     public static func uninstall() throws {
+        let port = (try? PolicyConfig.load(from: configURL))?.server.port ?? 9191
+        let hookURL = "http://127.0.0.1:\(port)/permission"
         try modifySettings { hooks in
             // Remove PermissionRequest entry
             if var permReq = hooks["PermissionRequest"] as? [[String: Any]] {
                 permReq.removeAll { entry in
                     (entry["hooks"] as? [[String: Any]] ?? []).contains {
-                        $0["url"] as? String == "http://127.0.0.1:9191/permission"
+                        $0["url"] as? String == hookURL
                     }
                 }
                 hooks["PermissionRequest"] = permReq
@@ -114,7 +121,7 @@ public struct Installer {
             if var preToolUse = hooks["PreToolUse"] as? [[String: Any]] {
                 preToolUse.removeAll { entry in
                     (entry["hooks"] as? [[String: Any]] ?? []).contains {
-                        $0["url"] as? String == "http://127.0.0.1:9191/permission"
+                        $0["url"] as? String == hookURL
                     }
                 }
                 hooks["PreToolUse"] = preToolUse

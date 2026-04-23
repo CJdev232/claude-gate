@@ -78,7 +78,10 @@ if args.contains("--restart") {
 if let cmd = args.dropFirst().first, cmd == "subagent-start" || cmd == "subagent-stop" {
     let data = FileHandle.standardInput.readDataToEndOfFile()
     let path = cmd == "subagent-start" ? "/subagent-start" : "/subagent-stop"
-    var req = URLRequest(url: URL(string: "http://127.0.0.1:9191\(path)")!)
+    let configURL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".claude-gate/config.json")
+    let port = (try? PolicyConfig.load(from: configURL))?.server.port ?? 9191
+    var req = URLRequest(url: URL(string: "http://127.0.0.1:\(port)\(path)")!)
     req.httpMethod = "POST"
     req.httpBody = data
     req.setValue("application/json", forHTTPHeaderField: "Content-Type")
