@@ -1,10 +1,12 @@
 import AppKit
 import Foundation
+import os
 
 public class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusController: StatusItemController?
     private var httpServer: HTTPServer?
     private var fileWatcher: FileWatcher?
+    private let logger = Logger(subsystem: "com.claude-gate", category: "app")
 
     private var configURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
@@ -12,6 +14,8 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
+        logger.info("claude-gate launching")
+
         let tracker = SubagentTracker()
         let store   = PermissionStore()
         let config  = (try? PolicyConfig.load(from: configURL)) ?? PolicyConfig.defaultConfig()
@@ -21,7 +25,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
 
         Task {
             do { try await server.start() }
-            catch { NSLog("claude-gate: server start failed: \(error)") }
+            catch { logger.error("Server start failed: \(error)") }
         }
 
         let ctrl = StatusItemController(store: store, config: config, configURL: configURL)
@@ -39,10 +43,13 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Hot-reload: push new config to both server and UI when file changes
         let configURL = self.configURL
-        self.fileWatcher = FileWatcher(url: configURL) { [weak server, weak ctrl] in
+        self.fileWatcher = FileWatcher(url: configURL) { [weak self, weak server, weak ctrl] in
             if let newCfg = try? PolicyConfig.load(from: configURL) {
                 server?.updateConfig(newCfg)
                 Task { @MainActor in ctrl?.updateConfig(newCfg) }
+                self?.logger.info("Config reloaded")
+            } else {
+                self?.logger.error("Config reload failed from \(configURL.path)")
             }
         }
     }

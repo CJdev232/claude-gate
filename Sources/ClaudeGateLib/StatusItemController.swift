@@ -1,4 +1,5 @@
 import AppKit
+import os
 import SwiftUI
 
 @MainActor
@@ -10,6 +11,7 @@ public final class StatusItemController {
     private let configURL: URL
     private var clickMonitor: Any?
     private var wasAutoOpened = false
+    private let logger = Logger(subsystem: "com.claude-gate", category: "ui")
 
     private static let orangeColor = NSColor(
         red: 230/255, green: 159/255, blue: 0, alpha: 1  // #E69F00
@@ -83,6 +85,7 @@ public final class StatusItemController {
               store.pendingRequests.count > 0,
               let btn = statusItem.button else { return }
         wasAutoOpened = true
+        logger.info("Auto-opening popover for \(self.store.pendingRequests.count) pending request(s)")
         popover.show(relativeTo: btn.bounds, of: btn, preferredEdge: .minY)
         // Float above other windows without stealing focus from terminal
         popover.contentViewController?.view.window?.level = .floating
@@ -94,6 +97,7 @@ public final class StatusItemController {
     /// Auto-closes only if it was auto-opened and all requests have been resolved.
     public func autoCloseIfEmpty() {
         guard popover.isShown, wasAutoOpened, store.pendingRequests.isEmpty else { return }
+        logger.info("Auto-closing popover (queue empty)")
         closePopover()
     }
 

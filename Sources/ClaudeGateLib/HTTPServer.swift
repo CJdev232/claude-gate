@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import os
 
 public final class HTTPServer {
     private static let maxRequestSize = 1_048_576  // 1MB
@@ -10,6 +11,7 @@ public final class HTTPServer {
     private let tracker: SubagentTracker
     private let store: PermissionStore
     private var listener: NWListener?
+    private let logger = Logger(subsystem: "com.claude-gate", category: "http")
 
     public init(config: PolicyConfig, tracker: SubagentTracker, store: PermissionStore) {
         self._config = config
@@ -48,11 +50,13 @@ public final class HTTPServer {
             }
             l.start(queue: .global())
         }
+        logger.info("Server started on port \(self.config.server.port)")
     }
 
     public func stop() {
         listener?.cancel()
         listener = nil
+        logger.info("Server stopped")
     }
 
     // MARK: - Connection handling
@@ -118,13 +122,16 @@ public final class HTTPServer {
     private func processRequest(data: Data, conn: NWConnection) async {
         guard let text = String(data: data, encoding: .utf8),
               let (path, body) = parseHTTP(text) else {
+            logger.error("Bad request: could not parse HTTP")
             reply(conn, json: ["error": "bad_request"]); return
         }
         switch path {
         case "/permission":     await handlePermission(body: body, conn: conn)
         case "/subagent-start": await handleSubagentStart(body: body, conn: conn)
         case "/subagent-stop":  await handleSubagentStop(body: body, conn: conn)
-        default:                reply(conn, json: ["error": "not_found"])
+        default:
+            logger.error("Unknown path: \(path)")
+            reply(conn, json: ["error": "not_found"])
         }
     }
 
@@ -150,11 +157,15 @@ public final class HTTPServer {
         let pol = config.policy(for: toolName)
         let policyValue = isSubagent ? pol.subagent : pol.parent
 
+        logger.info("Permission request: \(toolName) [\(isSubagent ? "subagent" : "parent")]")
+
         switch policyValue {
         case .allow:
             replyPermission(conn, behavior: "allow")
+            logger.info("Decision for \(toolName): allow (policy)")
         case .deny:
             replyPermission(conn, behavior: "deny")
+            logger.info("Decision for \(toolName): deny (policy)")
         case .ask:
             let decision = await askUser(
                 toolName: toolName,
@@ -164,6 +175,7 @@ public final class HTTPServer {
                 timeoutPolicy: pol.timeout
             )
             replyPermission(conn, behavior: decision == .allow ? "allow" : "deny")
+            logger.info("Decision for \(toolName): \(decision == .allow ? "allow" : "deny") (user)")
         }
     }
 
