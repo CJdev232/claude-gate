@@ -11,8 +11,13 @@ release:
 
 install: release
 	cp $(BINARY) $(INSTALL_TO)
+	codesign --force --sign - $(INSTALL_TO)
 	@echo "Installed to $(INSTALL_TO)"
 	@echo "Run: claude-gate --install"
+
+restart: install
+	-$(INSTALL_TO) --restart
+	@echo "Restarted"
 
 uninstall:
 	-$(INSTALL_TO) --uninstall
