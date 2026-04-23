@@ -74,6 +74,38 @@ if args.contains("--restart") {
     exit(0)
 }
 
+// --mode present|remote|away
+if let modeIdx = args.firstIndex(of: "--mode"), modeIdx + 1 < args.count {
+    let modeArg = args[modeIdx + 1].lowercased()
+    guard ["present", "remote", "away"].contains(modeArg) else {
+        fputs("Unknown mode: \(modeArg). Use: present, remote, away\n", stderr); exit(1)
+    }
+    let configURL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".claude-gate/config.json")
+    let port = (try? PolicyConfig.load(from: configURL))?.server.port ?? 9191
+    let body = "{\"mode\":\"\(modeArg)\"}".data(using: .utf8)!
+    var req = URLRequest(url: URL(string: "http://127.0.0.1:\(port)/mode")!)
+    req.httpMethod = "POST"
+    req.httpBody = body
+    req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    req.timeoutInterval = 3.0
+    let sem = DispatchSemaphore(value: 0)
+    var success = false
+    URLSession.shared.dataTask(with: req) { data, _, _ in
+        if let data, let resp = String(data: data, encoding: .utf8), resp.contains("ok") {
+            success = true
+        }
+        sem.signal()
+    }.resume()
+    sem.wait()
+    if success {
+        print("✓ Mode set to: \(modeArg)")
+    } else {
+        fputs("Failed to set mode. Is claude-gate running?\n", stderr); exit(1)
+    }
+    exit(0)
+}
+
 // subagent-start / subagent-stop — called by command hook, reads JSON stdin, POSTs to server
 if let cmd = args.dropFirst().first, cmd == "subagent-start" || cmd == "subagent-stop" {
     let data = FileHandle.standardInput.readDataToEndOfFile()

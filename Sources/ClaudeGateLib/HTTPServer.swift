@@ -43,12 +43,18 @@ public final class HTTPServer {
         }
 
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            var resumed = false
             l.stateUpdateHandler = { state in
+                guard !resumed else { return }
                 switch state {
-                case .ready:           cont.resume()
-                case .failed(let e):   cont.resume(throwing: e)
-                case .cancelled:       cont.resume(throwing: NWError.posix(.ECANCELED))
-                default:               break
+                case .ready:
+                    resumed = true; cont.resume()
+                case .failed(let e):
+                    resumed = true; cont.resume(throwing: e)
+                case .cancelled:
+                    resumed = true; cont.resume(throwing: NWError.posix(.ECANCELED))
+                default:
+                    break
                 }
             }
             l.start(queue: .global())
@@ -156,6 +162,7 @@ public final class HTTPServer {
         }
         switch path {
         case "/permission":     await handlePermission(body: body, conn: conn)
+        case "/mode":           await handleMode(body: body, conn: conn)
         case "/subagent-start": await handleSubagentStart(body: body, conn: conn)
         case "/subagent-stop":  await handleSubagentStop(body: body, conn: conn)
         default:
@@ -278,6 +285,17 @@ public final class HTTPServer {
                 }
             }
         }
+    }
+
+    private func handleMode(body: Data, conn: NWConnection) async {
+        guard let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+              let modeStr = json["mode"] as? String,
+              let mode = GateMode(rawValue: modeStr) else {
+            reply(conn, json: ["error": "invalid_mode"]); return
+        }
+        await MainActor.run { modeState.current = mode }
+        logger.info("Mode changed to: \(mode.rawValue) (via CLI)")
+        reply(conn, json: ["ok": true, "mode": mode.rawValue])
     }
 
     private func handleSubagentStart(body: Data, conn: NWConnection) async {

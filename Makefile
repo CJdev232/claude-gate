@@ -9,14 +9,19 @@ build:
 release:
 	swift build -c release
 
+# Usage: sudo make install (both cp and codesign need root)
 install: release
+	@kill $$(pgrep claude-gate) 2>/dev/null; while lsof -ti :9191 >/dev/null 2>&1; do sleep 0.2; done; true
 	cp $(BINARY) $(INSTALL_TO)
 	codesign --force --sign - $(INSTALL_TO)
 	@echo "Installed to $(INSTALL_TO)"
-	@echo "Run: claude-gate --install"
+	@echo "Run: claude-gate --install  (first time only)"
+	@echo "Run: claude-gate &          (to start)"
 
+# Usage: sudo make restart (kills, installs, starts)
 restart: install
-	-$(INSTALL_TO) --restart
+	@claude-gate &
+	@sleep 1
 	@echo "Restarted"
 
 uninstall:
