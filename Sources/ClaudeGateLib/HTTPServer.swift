@@ -192,23 +192,37 @@ public final class HTTPServer {
             replyPermission(conn, behavior: "deny")
             logger.info("Decision for \(toolName): deny (policy)")
         case .ask:
+            let requestID = UUID()
+            // Monitor connection — if it drops, auto-deny
+            conn.stateUpdateHandler = { [weak self] state in
+                switch state {
+                case .cancelled, .failed:
+                    Task { @MainActor in
+                        self?.store.decide(id: requestID, allow: false)
+                    }
+                default:
+                    break
+                }
+            }
             let decision = await askUser(
+                id: requestID,
                 toolName: toolName,
                 context: isSubagent ? .subagent : .parent,
                 inputPreview: inputPreview,
                 timeoutSecs: config.server.timeout,
                 timeoutPolicy: pol.timeout
             )
+            conn.stateUpdateHandler = nil  // Clean up after decision
             replyPermission(conn, behavior: decision == .allow ? "allow" : "deny")
             logger.info("Decision for \(toolName): \(decision == .allow ? "allow" : "deny") (user)")
         }
     }
 
     private func askUser(
+        id: UUID,
         toolName: String, context: SessionContext,
         inputPreview: String, timeoutSecs: Int, timeoutPolicy: PolicyValue
     ) async -> Decision {
-        let id = UUID()
         return await withCheckedContinuation { continuation in
             let req = PendingRequest(
                 id: id, toolName: toolName, sessionContext: context,
