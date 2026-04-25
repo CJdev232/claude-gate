@@ -8,3 +8,6 @@ compass_artifact_*
 
 # Superpowers brainstorm sessions
 .superpowers/
+
+# Personal research documents
+docs/research/
