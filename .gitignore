@@ -3,11 +3,26 @@
 *.d
 DerivedData/
 
+# Claude Code personal config
+.claude/
+
+# Trellis workspace
+.trellis/
+
+# macOS metadata
+.DS_Store
+**/.DS_Store
+
 # Claude research artifacts (raw compass exports)
 compass_artifact_*
+
+# Personal research documents
+docs/research/
 
 # Superpowers brainstorm sessions
 .superpowers/
 
-# Personal research documents
-docs/research/
+# Scratch/test files
+demo-*.txt
+test-output.txt
+test-*.txt

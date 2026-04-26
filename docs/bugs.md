@@ -172,7 +172,7 @@ When encountering or solving a bug during development, note it here. This includ
 ### BUG-023: MenuBarView width 340px but PolicyGridView needs 400px
 - **Description**: MenuBarView sets .frame(width: 340) but the policy grid now has 6 columns (added in three-mode-toggle). Column headers and toggle cells clip or overlap at 340px. StatusItemController sets popover.contentSize to 400px but the inner view constrains to 340px.
 - **Root Cause**: MenuBarView.swift frame width was not updated when PolicyGridView expanded from 4 to 6 columns. The popover container is 400px but the content view clips to 340px.
-- **Status**: OPEN
+- **Status**: FIXED (v0.3.0)
 - **Fix**: Change MenuBarView .frame(width: 340) to .frame(width: 400) to match the popover contentSize.
 - **Discovered**: 2026-04-23
 
@@ -186,7 +186,7 @@ When encountering or solving a bug during development, note it here. This includ
 ### BUG-025: Data race on HTTP buffer (CRITICAL)
 - **Description**: handleConnection uses a mutable `buffer` variable captured by nested readMore() closure. The receive handler runs on `.global()` queue (concurrent). If NWConnection dispatches callbacks on different threads, the buffer can be mutated from multiple threads simultaneously.
 - **Root Cause**: HTTPServer.swift:96 — buffer is a value type (Data) captured by reference through the enclosing function scope. All connection handling uses `.global()` queue instead of a per-connection serial queue.
-- **Status**: OPEN
+- **Status**: FIXED (v0.3.0)
 - **Fix**: Pin each connection's receive callbacks to a dedicated serial DispatchQueue instead of `.global()`. e.g. `let connQueue = DispatchQueue(label: "gate.conn.\(conn.hashValue)")` and use it for both `conn.start(queue:)` and all receive calls.
 - **Discovered**: 2026-04-23
 
@@ -238,6 +238,14 @@ When encountering or solving a bug during development, note it here. This includ
 - **Status**: OPEN
 - **Fix**: Only apply keyboard shortcuts to the first (topmost) row. Pass an `isFirst: Bool` parameter to RequestRowView and conditionally add the shortcut.
 - **Discovered**: 2026-04-23
+
+### BUG-034: Permission requests hang forever when GUI context unavailable
+- **Description**: When claude-gate is started without proper window server access (e.g. via `nohup ... &>/dev/null &` from a sandboxed shell), the HTTP server runs and responds to mode changes, but any tool in the `.ask` policy causes `askUser()` to wait indefinitely. The caller (Claude Code PermissionRequest hook) hangs until it times out. Symptom: CGS error `CGSStructuralRegionSetClippedByWindow returned CG error 268435459` in logs, no popover appears.
+- **Root Cause**: `askUser()` calls `store.add(req)` and suspends on a `CheckedContinuation`. The popover opening in `autoOpenIfNeeded()` silently fails due to the CGS error (no window server). Since no popover shows, the user never clicks Allow/Deny, and the continuation is never resumed. The 30-second timeout eventually fires and denies the request, but this freezes every tool call for 30 seconds.
+- **Status**: OPEN
+- **Fix (partial)**: Start claude-gate via `launchctl kickstart gui/$(id -u)/com.claude-gate` or via the LaunchAgent (`bootstrap gui/<uid>`) so it gets proper window server access. If GUI context is unavailable at startup, consider falling back to auto-allow/auto-deny instead of entering `askUser()`.
+- **Related**: BUG-017 (sandbox launch), BUG-011 (icon hidden)
+- **Discovered**: 2026-04-25
 
 ### BUG-033: Continuation dangling if listener cancelled before ready
 - **Description**: In HTTPServer.start(), if NWListener enters .cancelled state before reaching .ready, the CheckedContinuation is never resumed. The async caller hangs forever.
