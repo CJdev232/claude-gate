@@ -5,6 +5,7 @@ DerivedData/
 
 # Claude Code personal config
 .claude/
+CLAUDE.md
 
 # Trellis workspace
 .trellis/
