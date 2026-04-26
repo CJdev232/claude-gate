@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>claude-gate — Interactive Demo</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#0a0a0f; color:#e0e0e0; }
+
+  /* Colors — IBM/Wong accessible palette */
+  :root {
+    --teal:#00B2A9; --orange:#E69F00; --pink:#CC79A7;
+    --sky:#56B4E9; --blue:#0072B2;
+    --bg-dark:#0a0a0f; --bg-card:#1a1a2e; --bg-input:#111;
+    --border:#333; --text-dim:#666; --text-mid:#999;
+  }
+
+  /* Hero */
+  .hero { background:linear-gradient(135deg,#1a1a2e,#16213e); padding:48px 32px 36px; text-align:center; }
+  .hero h1 { font-size:32px; font-weight:700; letter-spacing:-0.5px; }
+  .hero h1 span { color:var(--teal); }
+  .hero .tagline { font-size:15px; color:var(--text-mid); margin-top:8px; }
+  .hero .features { display:flex; justify-content:center; gap:28px; margin-top:20px; font-size:12px; color:var(--text-dim); flex-wrap:wrap; }
+  .hero .features div { display:flex; align-items:center; gap:6px; }
+  .hero .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+
+  /* Problem/Solution */
+  .ps-row { display:flex; gap:20px; padding:24px 32px; background:#111; border-bottom:1px solid var(--border); }
+  .ps-card { flex:1; padding:16px; background:var(--bg-card); border-radius:8px; }
+  .ps-card.problem { border-left:3px solid var(--pink); }
+  .ps-card.solution { border-left:3px solid var(--teal); }
+  .ps-label { font-size:11px; font-weight:600; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px; }
+  .ps-card p { font-size:13px; color:#ccc; line-height:1.7; }
+
+  /* Sandbox */
+  .sandbox-header { padding:20px 32px 8px; }
+  .sandbox-header h2 { font-size:18px; font-weight:600; }
+  .sandbox-header p { font-size:12px; color:var(--text-dim); margin-top:4px; }
+  .sandbox { display:flex; gap:20px; padding:12px 32px 20px; }
+
+  /* Terminal */
+  .terminal { flex:1; }
+  .term-window { background:#1e1e1e; border-radius:10px; overflow:hidden; border:1px solid var(--border); }
+  .term-bar { background:#2d2d2d; padding:7px 12px; font-size:10px; color:#888; display:flex; align-items:center; gap:6px; }
+  .term-dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .term-body { padding:14px; font-family:'SF Mono','Fira Code',monospace; font-size:12px; color:#ccc; line-height:1.8; min-height:260px; max-height:300px; overflow-y:auto; }
+  .term-line { white-space:pre-wrap; }
+  .term-line.prompt { color:var(--teal); }
+  .term-line.info { color:var(--text-dim); }
+  .term-line.action { color:var(--orange); }
+  .term-line.success { color:var(--teal); }
+  .term-line.denied { color:var(--pink); }
+  .term-line.auto { color:var(--sky); }
+  .term-cursor { display:inline-block; width:8px; height:14px; background:var(--teal); animation:blink 1s step-end infinite; vertical-align:middle; }
+  @keyframes blink { 50% { opacity:0; } }
+
+  /* Popover */
+  .popover-area { width:240px; flex-shrink:0; }
+  .popover { background:#2a2a2e; border-radius:12px; overflow:hidden; border:1px solid #444; box-shadow:0 8px 30px rgba(0,0,0,0.6); transition:opacity 0.3s; }
+  .popover.hidden-popover { opacity:0.3; pointer-events:none; }
+  .popover-tabs { display:flex; padding:8px 12px; gap:8px; border-bottom:1px solid #333; }
+  .popover-tab { font-size:11px; cursor:pointer; padding:2px 6px; border-radius:4px; }
+  .popover-tab.active { font-weight:600; color:#fff; }
+  .popover-tab:not(.active) { color:var(--text-dim); }
+  .popover-empty { padding:20px; text-align:center; color:var(--text-dim); font-size:12px; }
+  .popover-empty .shield { font-size:24px; margin-bottom:6px; display:block; }
+
+  /* Request row */
+  .req-row { padding:10px 12px; }
+  .req-header { display:flex; justify-content:space-between; align-items:center; }
+  .req-tool { font-size:12px; font-weight:600; color:var(--orange); }
+  .req-ctx { font-size:9px; color:var(--text-dim); margin-left:6px; }
+  .req-time { font-size:9px; color:var(--text-dim); }
+  .req-preview { font-size:10px; color:#888; margin-top:5px; padding:4px 8px; background:#111; border-radius:4px; font-family:monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .req-actions { display:flex; gap:6px; margin-top:8px; }
+  .req-btn { flex:1; text-align:center; padding:5px; border-radius:5px; font-size:11px; font-weight:600; cursor:pointer; border:none; color:#fff; transition:transform 0.1s; }
+  .req-btn:active { transform:scale(0.95); }
+  .req-btn.deny { background:var(--pink); }
+  .req-btn.allow { background:var(--teal); }
+
+  /* Policy grid */
+  .policy-grid { padding:8px 10px; font-size:10px; }
+  .policy-grid table { width:100%; border-collapse:collapse; }
+  .policy-grid th { text-align:center; color:var(--text-dim); font-size:9px; padding:3px 2px; font-weight:normal; }
+  .policy-grid th:first-child { text-align:left; width:42px; }
+  .policy-grid td { text-align:center; padding:3px 2px; }
+  .policy-grid .tool-name { text-align:left; font-size:10px; }
+  .pol-cell { cursor:pointer; font-size:10px; border-radius:3px; padding:1px 4px; display:inline-block; min-width:16px; }
+  .pol-cell.allow { color:var(--teal); }
+  .pol-cell.ask { color:var(--orange); }
+  .pol-cell.deny { color:var(--pink); }
+
+  /* Mode switcher */
+  .mode-bar { padding:16px 32px; border-top:1px solid #222; display:flex; align-items:center; gap:12px; }
+  .mode-label { font-size:11px; color:var(--text-dim); }
+  .mode-btn { padding:7px 18px; border-radius:7px; font-size:11px; cursor:pointer; border:none; font-weight:500; transition:all 0.2s; }
+  .mode-btn.active-present { background:var(--teal); color:#fff; }
+  .mode-btn.active-remote { background:var(--orange); color:#fff; }
+  .mode-btn.active-away { background:var(--teal); color:#fff; }
+  .mode-btn:not([class*="active-"]) { background:#222; color:var(--text-dim); }
+  .mode-btn:hover:not([class*="active-"]) { background:#333; color:#ccc; }
+  .mode-indicator { margin-left:auto; font-size:11px; padding:4px 10px; border-radius:4px; }
+
+  /* Workspace viz */
+  .workspace-section { display:flex; gap:20px; padding:12px 32px 20px; }
+  .file-tree { flex:1; background:var(--bg-card); border-radius:8px; padding:14px; border:1px solid var(--border); }
+  .file-tree h3 { font-size:12px; color:var(--text-dim); margin-bottom:10px; }
+  .tree-item { font-family:monospace; font-size:11px; padding:3px 0 3px 12px; border-left:2px solid transparent; transition:all 0.3s; }
+  .tree-item.inside { color:#ccc; }
+  .tree-item.outside { color:#888; }
+  .tree-item.highlight-allow { border-left-color:var(--teal); color:var(--teal); background:rgba(0,178,169,0.08); }
+  .tree-item.highlight-deny { border-left-color:var(--pink); color:var(--pink); background:rgba(204,121,167,0.08); }
+  .tree-item .icon { margin-right:6px; }
+
+  /* Decision log */
+  .log-section { padding:0 32px 20px; }
+  .log-section h3 { font-size:13px; margin-bottom:8px; }
+  .log-table { width:100%; border-collapse:collapse; font-size:11px; }
+  .log-table th { text-align:left; color:var(--text-dim); font-size:10px; padding:6px 8px; border-bottom:1px solid var(--border); }
+  .log-table td { padding:5px 8px; border-bottom:1px solid #1a1a1a; }
+  .log-table .decision-allow { color:var(--teal); }
+  .log-table .decision-deny { color:var(--pink); }
+  .log-table .decided-by { color:var(--text-dim); font-style:italic; }
+  #log-body { max-height:160px; overflow-y:auto; }
+
+  /* Stats bar */
+  .stats-bar { display:flex; gap:20px; padding:12px 32px; background:#111; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+  .stat { display:flex; align-items:center; gap:6px; font-size:12px; }
+  .stat .num { font-weight:700; font-size:16px; }
+  .stat .label { color:var(--text-dim); font-size:11px; }
+  .stat.allowed .num { color:var(--teal); }
+  .stat.denied .num { color:var(--pink); }
+  .stat.auto .num { color:var(--sky); }
+  .stat.mode-stat { margin-left:auto; }
+
+  /* Annotation */
+  .annotation { margin:8px 32px; padding:10px 14px; background:rgba(86,180,233,0.08); border-left:3px solid var(--sky); border-radius:0 6px 6px 0; font-size:12px; color:var(--sky); transition:opacity 0.5s; }
+
+  /* Responsive */
+  @media (max-width:768px) {
+    .sandbox { flex-direction:column; }
+    .popover-area { width:100%; }
+    .ps-row { flex-direction:column; }
+    .workspace-section { flex-direction:column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero">
+  <h1><span>claude</span>-gate</h1>
+  <div class="tagline">Permission control for Claude Code — from your menu bar</div>
+  <div class="features">
+    <div><span class="dot" style="background:var(--teal)"></span> Approve/deny tool calls</div>
+    <div><span class="dot" style="background:var(--orange)"></span> Three modes: Present / Remote / Away</div>
+    <div><span class="dot" style="background:var(--pink)"></span> Workspace-aware auto-policies</div>
+  </div>
+</div>
+
+<!-- Problem / Solution -->
+<div class="ps-row">
+  <div class="ps-card problem">
+    <div class="ps-label" style="color:var(--pink);">The Problem</div>
+    <p>Claude Code asks for permission in the terminal. You context-switch, lose focus, approve blindly. When you step away, everything stalls — tools time out and work stops.</p>
+  </div>
+  <div class="ps-card solution">
+    <div class="ps-label" style="color:var(--teal);">The Solution</div>
+    <p>A menu bar app that intercepts every permission request. Approve or deny in a floating popover. Switch to Away mode and Claude keeps working on safe operations inside your project.</p>
+  </div>
+</div>
+
+<!-- Stats Bar -->
+<div class="stats-bar">
+  <div class="stat allowed"><span class="num" id="stat-allowed">0</span><span class="label">allowed</span></div>
+  <div class="stat denied"><span class="num" id="stat-denied">0</span><span class="label">denied</span></div>
+  <div class="stat auto"><span class="num" id="stat-auto">0</span><span class="label">auto-decided</span></div>
+  <div class="stat mode-stat"><span class="label" id="stat-mode" style="color:var(--teal);font-weight:600;">Present Mode</span></div>
+</div>
+
+<!-- Sandbox Header -->
+<div class="sandbox-header">
+  <h2>Try it yourself</h2>
+  <p>Watch the simulated Claude Code session. Approve or deny requests in the popover.</p>
+</div>
+
+<!-- Annotation -->
+<div class="annotation" id="annotation" style="opacity:0;">Waiting...</div>
+
+<!-- Sandbox -->
+<div class="sandbox">
+  <!-- Terminal -->
+  <div class="terminal">
+    <div class="term-window">
+      <div class="term-bar">
+        <span class="term-dot" style="background:#ff5f57"></span>
+        <span class="term-dot" style="background:#febc2e"></span>
+        <span class="term-dot" style="background:#28c840"></span>
+        <span style="margin-left:8px;color:#888;">Claude Code Session</span>
+      </div>
+      <div class="term-body" id="terminal">
+        <div class="term-line prompt">$ claude "refactor the auth module"</div>
+        <div class="term-line info">Claude Code v2.1.98 — claude-gate active</div>
+        <div class="term-line info"> </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Popover -->
+  <div class="popover-area">
+    <div class="popover" id="popover">
+      <div class="popover-tabs">
+        <div class="popover-tab active" id="tab-requests" onclick="showTab('requests')">Requests (<span id="req-count">0</span>)</div>
+        <div class="popover-tab" id="tab-policies" onclick="showTab('policies')">Policies</div>
+      </div>
+      <div id="requests-view">
+        <div class="popover-empty" id="empty-state">
+          <span class="shield">&#x1F6E1;</span>
+          No pending requests
+        </div>
+        <div id="request-container"></div>
+      </div>
+      <div id="policies-view" style="display:none;">
+        <div class="policy-grid">
+          <table>
+            <tr><th></th><th>Parent</th><th>Sub</th><th>T/O</th><th style="color:var(--teal)">Aw:WS</th><th style="color:var(--orange)">Aw:Out</th></tr>
+            <tbody id="policy-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Workspace Visualization -->
+<div class="workspace-section">
+  <div class="file-tree">
+    <h3>Workspace Boundary</h3>
+    <div class="tree-item inside" data-path="/project"><span class="icon">&#128194;</span> ~/Code/my-project/ <span style="color:var(--teal);font-size:9px;margin-left:4px;">WORKSPACE</span></div>
+    <div class="tree-item inside" data-path="/project/src" style="padding-left:24px;"><span class="icon">&#128194;</span> src/</div>
+    <div class="tree-item inside" data-path="/project/src/auth.swift" style="padding-left:36px;"><span class="icon">&#128196;</span> auth.swift</div>
+    <div class="tree-item inside" data-path="/project/src/server.swift" style="padding-left:36px;"><span class="icon">&#128196;</span> server.swift</div>
+    <div class="tree-item inside" data-path="/project/tests" style="padding-left:24px;"><span class="icon">&#128194;</span> tests/</div>
+    <div class="tree-item inside" data-path="/project/tests/auth_test.swift" style="padding-left:36px;"><span class="icon">&#128196;</span> auth_test.swift</div>
+    <div class="tree-item inside" data-path="/project/Package.swift" style="padding-left:24px;"><span class="icon">&#128196;</span> Package.swift</div>
+    <div style="height:8px;border-bottom:1px dashed var(--border);margin:8px 0;"></div>
+    <div class="tree-item outside" data-path="/etc"><span class="icon">&#128194;</span> /etc/ <span style="color:var(--pink);font-size:9px;margin-left:4px;">OUTSIDE</span></div>
+    <div class="tree-item outside" data-path="/etc/hosts" style="padding-left:24px;"><span class="icon">&#128196;</span> hosts</div>
+    <div class="tree-item outside" data-path="/tmp"><span class="icon">&#128194;</span> /tmp/ <span style="color:var(--pink);font-size:9px;margin-left:4px;">OUTSIDE</span></div>
+  </div>
+  <div class="file-tree" style="flex:0.6;">
+    <h3>Decision Log</h3>
+    <div id="log-body" style="max-height:200px;overflow-y:auto;">
+      <table class="log-table">
+        <thead><tr><th>Time</th><th>Tool</th><th>Decision</th><th>By</th></tr></thead>
+        <tbody id="log-entries"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Mode Switcher -->
+<div class="mode-bar">
+  <span class="mode-label">Mode:</span>
+  <button class="mode-btn active-present" id="mode-present" onclick="setMode('present')">Present</button>
+  <button class="mode-btn" id="mode-remote" onclick="setMode('remote')">Remote</button>
+  <button class="mode-btn" id="mode-away" onclick="setMode('away')">Away</button>
+  <div class="mode-indicator" id="mode-desc" style="background:rgba(0,178,169,0.1);color:var(--teal);">Popover active — 30s timeout</div>
+</div>
+
+<div style="padding:20px 32px;text-align:center;">
+  <p style="font-size:12px;color:var(--text-dim);">
+    Open source — macOS menu bar app built with Swift, AppKit, SwiftUI, and Network.framework
+  </p>
+</div>
+
+<script>
+// ── State ──
+let mode = 'present';
+let pendingRequest = null;
+let stats = { allowed:0, denied:0, auto:0 };
+let scenarioIdx = 0;
+let running = false;
+
+const policies = {
+  Read:   { parent:'allow', subagent:'allow', timeout:'allow', awayWS:'allow', awayOut:'allow' },
+  Write:  { parent:'ask',   subagent:'ask',   timeout:'deny',  awayWS:'allow', awayOut:'deny' },
+  Edit:   { parent:'ask',   subagent:'ask',   timeout:'deny',  awayWS:'allow', awayOut:'deny' },
+  Bash:   { parent:'ask',   subagent:'deny',  timeout:'deny',  awayWS:'deny',  awayOut:'deny' },
+  Glob:   { parent:'allow', subagent:'allow', timeout:'allow', awayWS:'allow', awayOut:'allow' },
+};
+
+const scenarios = [
+  { tool:'Read', path:'/project/src/auth.swift', context:'parent', inside:true,
+    annotation:'Read is always allowed — no popover needed. Claude reads files freely.' },
+  { tool:'Write', path:'/project/src/auth.swift', context:'parent', inside:true,
+    annotation:'Write requires approval in Present mode. Check the popover and click Allow or Deny.' },
+  { tool:'Bash', path:'echo "running tests"', context:'subagent', inside:true,
+    annotation:'Bash from a subagent is auto-denied by policy. Subagents cannot run shell commands.' },
+  { tool:'Edit', path:'/project/src/server.swift', context:'parent', inside:true,
+    annotation:'Edit inside workspace. In Present mode you decide. Try switching to Away mode first!' },
+  { tool:'Write', path:'/etc/hosts', context:'parent', inside:false,
+    annotation:'Write OUTSIDE workspace. In Away mode this is auto-denied — the workspace boundary protects your system.' },
+  { tool:'Write', path:'/project/tests/auth_test.swift', context:'parent', inside:true,
+    annotation:'Write inside workspace. In Away mode this auto-approves — Claude keeps working on your project.' },
+  { tool:'Bash', path:'swift build', context:'parent', inside:true,
+    annotation:'Bash always needs human review — even inside workspace. Shell commands are too powerful for auto-approve.' },
+  { tool:'Read', path:'/project/Package.swift', context:'parent', inside:true,
+    annotation:'Another Read — always instant. Claude never waits to read files.' },
+];
+
+// ── Terminal ──
+const termEl = document.getElementById('terminal');
+function termPrint(text, cls='') {
+  const line = document.createElement('div');
+  line.className = 'term-line ' + cls;
+  line.textContent = text;
+  termEl.appendChild(line);
+  termEl.scrollTop = termEl.scrollHeight;
+  return line;
+}
+
+function termTyping(text, cls='') {
+  return new Promise(resolve => {
+    const line = document.createElement('div');
+    line.className = 'term-line ' + cls;
+    termEl.appendChild(line);
+    let i = 0;
+    const interval = setInterval(() => {
+      line.textContent = text.slice(0, ++i);
+      termEl.scrollTop = termEl.scrollHeight;
+      if (i >= text.length) { clearInterval(interval); resolve(line); }
+    }, 25);
+  });
+}
+
+// ── Annotation ──
+function annotate(text) {
+  const el = document.getElementById('annotation');
+  el.textContent = text;
+  el.style.opacity = '1';
+}
+function clearAnnotation() {
+  document.getElementById('annotation').style.opacity = '0';
+}
+
+// ── Stats ──
+function updateStats() {
+  document.getElementById('stat-allowed').textContent = stats.allowed;
+  document.getElementById('stat-denied').textContent = stats.denied;
+  document.getElementById('stat-auto').textContent = stats.auto;
+}
+
+// ── Log ──
+function addLog(tool, path, decision, decidedBy) {
+  const tbody = document.getElementById('log-entries');
+  const tr = document.createElement('tr');
+  const time = new Date().toLocaleTimeString('en', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  const decClass = decision === 'allow' ? 'decision-allow' : 'decision-deny';
+  const shortPath = path.length > 25 ? '...' + path.slice(-22) : path;
+  tr.innerHTML = `<td style="color:var(--text-dim)">${time}</td><td>${tool}</td><td class="${decClass}">${decision}</td><td class="decided-by">${decidedBy}</td>`;
+  tbody.insertBefore(tr, tbody.firstChild);
+  const logBody = document.getElementById('log-body');
+  logBody.scrollTop = 0;
+}
+
+// ── Workspace highlight ──
+function highlightPath(path, decision) {
+  document.querySelectorAll('.tree-item').forEach(el => {
+    el.classList.remove('highlight-allow','highlight-deny');
+  });
+  const inside = path.startsWith('/project');
+  document.querySelectorAll('.tree-item').forEach(el => {
+    const dp = el.dataset.path;
+    if (dp && path.startsWith(dp)) {
+      el.classList.add(decision === 'allow' ? 'highlight-allow' : 'highlight-deny');
+    }
+  });
+  setTimeout(() => {
+    document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('highlight-allow','highlight-deny'));
+  }, 3000);
+}
+
+// ── Popover ──
+function showTab(tab) {
+  document.getElementById('requests-view').style.display = tab === 'requests' ? 'block' : 'none';
+  document.getElementById('policies-view').style.display = tab === 'policies' ? 'block' : 'none';
+  document.getElementById('tab-requests').className = 'popover-tab' + (tab === 'requests' ? ' active' : '');
+  document.getElementById('tab-policies').className = 'popover-tab' + (tab === 'policies' ? ' active' : '');
+}
+
+function showRequest(tool, path, context) {
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('req-count').textContent = '1';
+  const shortPath = path.length > 30 ? '...' + path.slice(-27) : path;
+  const container = document.getElementById('request-container');
+  container.innerHTML = `
+    <div class="req-row">
+      <div class="req-header">
+        <span><span class="req-tool">${tool}</span><span class="req-ctx">${context}</span></span>
+        <span class="req-time">just now</span>
+      </div>
+      <div class="req-preview">${shortPath}</div>
+      <div class="req-actions">
+        <button class="req-btn deny" onclick="resolveRequest('deny')">&#10005; Deny</button>
+        <button class="req-btn allow" onclick="resolveRequest('allow')">&#10003; Allow</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('popover').classList.remove('hidden-popover');
+}
+
+function clearRequest() {
+  document.getElementById('request-container').innerHTML = '';
+  document.getElementById('empty-state').style.display = 'block';
+  document.getElementById('req-count').textContent = '0';
+}
+
+function resolveRequest(decision) {
+  if (!pendingRequest) return;
+  const req = pendingRequest;
+  pendingRequest = null;
+  clearRequest();
+
+  if (decision === 'allow') {
+    stats.allowed++;
+    termPrint(`  ✓ ${req.tool} approved — continuing`, 'success');
+  } else {
+    stats.denied++;
+    termPrint(`  ✕ ${req.tool} denied by user`, 'denied');
+  }
+  addLog(req.tool, req.path, decision, 'user');
+  highlightPath(req.path, decision);
+  updateStats();
+
+  setTimeout(nextScenario, 2000);
+}
+
+// ── Policy Grid ──
+function renderPolicies() {
+  const tbody = document.getElementById('policy-body');
+  tbody.innerHTML = '';
+  for (const [tool, pol] of Object.entries(policies)) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="tool-name">${tool}</td>
+      <td><span class="pol-cell ${pol.parent}" onclick="togglePol('${tool}','parent',this)">${polIcon(pol.parent)}</span></td>
+      <td><span class="pol-cell ${pol.subagent}" onclick="togglePol('${tool}','subagent',this)">${polIcon(pol.subagent)}</span></td>
+      <td><span class="pol-cell ${pol.timeout}" onclick="togglePol('${tool}','timeout',this)">${polIcon(pol.timeout)}</span></td>
+      <td><span class="pol-cell ${pol.awayWS}" onclick="toggleAwayPol('${tool}','awayWS',this)">${polIcon(pol.awayWS)}</span></td>
+      <td><span class="pol-cell ${pol.awayOut}" onclick="toggleAwayPol('${tool}','awayOut',this)">${polIcon(pol.awayOut)}</span></td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+function polIcon(v) { return v==='allow'?'&#10003;':v==='ask'?'&#9702;':'&#10005;'; }
+function togglePol(tool,field,el) {
+  const cycle = {allow:'ask',ask:'deny',deny:'allow'};
+  policies[tool][field] = cycle[policies[tool][field]];
+  renderPolicies();
+}
+function toggleAwayPol(tool,field,el) {
+  policies[tool][field] = policies[tool][field]==='allow'?'deny':'allow';
+  renderPolicies();
+}
+
+// ── Mode ──
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.mode-btn').forEach(b => b.className = 'mode-btn');
+  const btn = document.getElementById('mode-'+m);
+  btn.classList.add('active-'+m);
+
+  const desc = document.getElementById('mode-desc');
+  const mstat = document.getElementById('stat-mode');
+  if (m === 'present') {
+    desc.textContent = 'Popover active — 30s timeout';
+    desc.style.background = 'rgba(0,178,169,0.1)'; desc.style.color = 'var(--teal)';
+    mstat.textContent = 'Present Mode'; mstat.style.color = 'var(--teal)';
+    document.getElementById('popover').classList.remove('hidden-popover');
+  } else if (m === 'remote') {
+    desc.textContent = 'Popover active — 5min timeout (phone)';
+    desc.style.background = 'rgba(230,159,0,0.1)'; desc.style.color = 'var(--orange)';
+    mstat.textContent = 'Remote Mode'; mstat.style.color = 'var(--orange)';
+    document.getElementById('popover').classList.remove('hidden-popover');
+  } else {
+    desc.textContent = 'Auto-deciding — workspace boundary active';
+    desc.style.background = 'rgba(0,178,169,0.1)'; desc.style.color = 'var(--teal)';
+    mstat.textContent = 'Away Mode'; mstat.style.color = 'var(--sky)';
+    document.getElementById('popover').classList.add('hidden-popover');
+    // If there's a pending request in away mode, auto-decide it
+    if (pendingRequest) {
+      autoDecide(pendingRequest);
+    }
+  }
+}
+
+// ── Auto-decide (away mode) ──
+function autoDecide(req) {
+  pendingRequest = null;
+  clearRequest();
+
+  const pol = policies[req.tool] || { awayWS:'deny', awayOut:'deny' };
+  let decision, decidedBy;
+
+  if (req.tool === 'Bash') {
+    decision = 'deny'; decidedBy = 'away (bash)';
+  } else if (req.inside) {
+    decision = pol.awayWS === 'allow' ? 'allow' : 'deny';
+    decidedBy = 'away (workspace)';
+  } else {
+    decision = pol.awayOut === 'allow' ? 'allow' : 'deny';
+    decidedBy = 'away (outside)';
+  }
+
+  stats.auto++;
+  if (decision === 'allow') {
+    stats.allowed++;
+    termPrint(`  ⚡ ${req.tool} auto-approved (away mode, workspace)`, 'auto');
+  } else {
+    stats.denied++;
+    termPrint(`  ⚡ ${req.tool} auto-denied (away mode${req.inside ? '' : ', outside workspace'})`, 'denied');
+  }
+  addLog(req.tool, req.path, decision, decidedBy);
+  highlightPath(req.path, decision);
+  updateStats();
+
+  setTimeout(nextScenario, 2000);
+}
+
+// ── Policy-based auto-decide (present/remote) ──
+function policyDecide(req) {
+  const pol = policies[req.tool] || { parent:'ask', subagent:'ask' };
+  const policyVal = req.context === 'subagent' ? pol.subagent : pol.parent;
+  return policyVal; // 'allow', 'deny', or 'ask'
+}
+
+// ── Scenarios ──
+async function nextScenario() {
+  if (scenarioIdx >= scenarios.length) {
+    termPrint('');
+    termPrint('Session complete. All scenarios demonstrated.', 'info');
+    annotate('Demo complete! Try switching modes and clicking policies to explore more.');
+    // Loop back
+    setTimeout(() => {
+      scenarioIdx = 0;
+      termPrint('');
+      termPrint('─── Restarting demo ───', 'info');
+      termPrint('');
+      setTimeout(nextScenario, 2000);
+    }, 5000);
+    return;
+  }
+
+  const s = scenarios[scenarioIdx++];
+  annotate(s.annotation);
+
+  // Type the action
+  const displayPath = s.path.replace('/project/', '');
+  if (s.tool === 'Bash') {
+    await termTyping(`▸ Running: ${s.path}`, 'action');
+  } else {
+    await termTyping(`▸ ${s.tool}: ${displayPath}`, 'action');
+  }
+
+  // Check policy
+  const policyResult = policyDecide(s);
+
+  if (mode === 'away') {
+    // Away mode: auto-decide
+    pendingRequest = s;
+    setTimeout(() => autoDecide(s), 800);
+  } else if (policyResult === 'allow') {
+    // Auto-allow by policy
+    stats.allowed++; stats.auto++;
+    termPrint(`  ✓ auto-approved (policy: allow)`, 'success');
+    addLog(s.tool, s.path, 'allow', 'policy');
+    highlightPath(s.path, 'allow');
+    updateStats();
+    setTimeout(nextScenario, 2000);
+  } else if (policyResult === 'deny') {
+    // Auto-deny by policy
+    stats.denied++; stats.auto++;
+    termPrint(`  ✕ auto-denied (policy: ${s.context} deny)`, 'denied');
+    addLog(s.tool, s.path, 'deny', 'policy');
+    highlightPath(s.path, 'deny');
+    updateStats();
+    setTimeout(nextScenario, 2000);
+  } else {
+    // Ask — show popover
+    termPrint('  ⏳ waiting for approval...', 'info');
+    pendingRequest = s;
+    showRequest(s.tool, s.path, s.context);
+  }
+}
+
+// ── Init ──
+renderPolicies();
+setTimeout(nextScenario, 1500);
+</script>
+</body>
+</html>
