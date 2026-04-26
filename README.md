@@ -2,7 +2,7 @@
 
 A macOS menu bar app that intercepts Claude Code's PermissionRequest hook and presents a native popover for approve/deny decisions. Supports three operational modes — Present, Remote, and Away — with workspace-aware auto-approve policies.
 
-**[Try the interactive demo](https://USERNAME.github.io/claude-gate/)** — no install needed, runs in your browser.
+**[Try the interactive demo](https://CJdev232.github.io/claude-gate/)** — no install needed, runs in your browser.
 
 ## Why
 
@@ -28,14 +28,14 @@ The interactive demo simulates a Claude Code session with claude-gate running. Y
 - Watch workspace detection in action (inside vs. outside project boundary)
 - See the live decision log and policy grid
 
-Open `demo.html` locally, or visit the [live demo](https://USERNAME.github.io/claude-gate/).
+Open `demo.html` locally, or visit the [live demo](https://CJdev232.github.io/claude-gate/).
 
 ## Install
 
 Build from source (macOS 14+, Swift 5.9+, Claude Code >= 2.1.98):
 
 ```sh
-git clone https://github.com/USERNAME/claude-gate.git
+git clone https://github.com/CJdev232/claude-gate.git
 cd claude-gate
 sudo make install       # build, copy to /usr/local/bin, codesign
 claude-gate --install   # register PermissionRequest hook in Claude Code
