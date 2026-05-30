@@ -76,14 +76,18 @@ if args.contains("--restart") {
 
 // --mode present|remote|away
 if let modeIdx = args.firstIndex(of: "--mode"), modeIdx + 1 < args.count {
-    let modeArg = args[modeIdx + 1].lowercased()
-    guard ["present", "remote", "away"].contains(modeArg) else {
-        fputs("Unknown mode: \(modeArg). Use: present, remote, away\n", stderr); exit(1)
+    let modeInput = args[modeIdx + 1].lowercased()
+    let modeMap: [String: String] = [
+        "present": "present", "remote": "remote", "away": "away",
+        "observer": "observer", "observerworkspace": "observerWorkspace",
+    ]
+    guard let modeValue = modeMap[modeInput] else {
+        fputs("Unknown mode: \(modeInput). Use: present, remote, away, observer, observerWorkspace\n", stderr); exit(1)
     }
     let configURL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".claude-gate/config.json")
     let port = (try? PolicyConfig.load(from: configURL))?.server.port ?? 9191
-    let body = "{\"mode\":\"\(modeArg)\"}".data(using: .utf8)!
+    let body = "{\"mode\":\"\(modeValue)\"}".data(using: .utf8)!
     var req = URLRequest(url: URL(string: "http://127.0.0.1:\(port)/mode")!)
     req.httpMethod = "POST"
     req.httpBody = body
@@ -99,7 +103,7 @@ if let modeIdx = args.firstIndex(of: "--mode"), modeIdx + 1 < args.count {
     }.resume()
     sem.wait()
     if success {
-        print("✓ Mode set to: \(modeArg)")
+        print("✓ Mode set to: \(modeValue)")
     } else {
         fputs("Failed to set mode. Is claude-gate running?\n", stderr); exit(1)
     }

@@ -235,8 +235,6 @@ public final class HTTPServer {
         if alwaysInsideTools.contains(toolName) {
             isInWorkspace = true
         } else if let path = filePath {
-            // Primary: check if file_path is inside the session's cwd
-            // Fallback: check against configured workspaces
             if let cwd = cwd {
                 isInWorkspace = path.hasPrefix(cwd + "/") || path == cwd
             } else {
@@ -244,6 +242,29 @@ public final class HTTPServer {
             }
         } else {
             isInWorkspace = false
+        }
+
+        // Gate-side observer modes
+        if mode == .observer || (mode == .observerWorkspace && isInWorkspace) {
+            replyPermission(conn, behavior: "allow")
+            let entry = ActivityEntry(
+                toolName: toolName, inputPreview: inputPreview, decision: "allow",
+                isObserver: true, sessionID: sessionID
+            )
+            await MainActor.run { activityLog.append(entry) }
+
+            if let signal = DangerDetector.check(toolName: toolName, inputPreview: inputPreview, filePath: filePath, cwd: cwd) {
+                dangerNotifier.notify(signal: signal, toolName: toolName, inputPreview: inputPreview)
+                logger.warning("Observer DANGER: \(signal.reason) — \(toolName): \(inputPreview)")
+            }
+
+            logger.info("Observer: \(toolName) allowed (gate mode=\(mode.rawValue))")
+            return
+        }
+
+        // Observer (workspace) outside workspace — fall through to normal gating
+        if mode == .observerWorkspace && !isInWorkspace {
+            logger.info("Observer (workspace): \(toolName) outside workspace, gating normally")
         }
 
         func logDecision(_ decision: String) {
@@ -255,6 +276,8 @@ public final class HTTPServer {
         }
 
         switch mode {
+        case .observer, .observerWorkspace:
+            break // handled above — should not reach here
         case .present, .remote:
             let policyValue = isSubagent ? pol.subagent : pol.parent
             switch policyValue {

@@ -59,7 +59,7 @@ public final class StatusItemController {
             rootView: MenuBarView(
                 store: store,
                 activityLog: activityLog,
-                config: Binding(get: { self.config }, set: { self.config = $0 }),
+                config: Binding(get: { [weak self] in self?.config ?? PolicyConfig.defaultConfig() }, set: { [weak self] in self?.config = $0 }),
                 onConfigChanged: { [weak self] in self?.persistConfig() },
                 onQuit: { NSApplication.shared.terminate(nil) }
             )
@@ -85,6 +85,16 @@ public final class StatusItemController {
 
         menu.addItem(NSMenuItem.separator())
 
+        let observerItem = NSMenuItem(title: "Observer", action: #selector(setObserver), keyEquivalent: "")
+        observerItem.target = self
+        menu.addItem(observerItem)
+
+        let observerWsItem = NSMenuItem(title: "Observer (Workspace)", action: #selector(setObserverWorkspace), keyEquivalent: "")
+        observerWsItem.target = self
+        menu.addItem(observerWsItem)
+
+        menu.addItem(NSMenuItem.separator())
+
         let quitItem = NSMenuItem(title: "Quit claude-gate", action: #selector(quitApp), keyEquivalent: "")
         quitItem.target = self
         menu.addItem(quitItem)
@@ -95,6 +105,8 @@ public final class StatusItemController {
     @objc private func setPresent() { setMode(.present) }
     @objc private func setRemote() { setMode(.remote) }
     @objc private func setAway() { setMode(.away) }
+    @objc private func setObserver() { setMode(.observer) }
+    @objc private func setObserverWorkspace() { setMode(.observerWorkspace) }
     @objc private func quitApp() { NSApplication.shared.terminate(nil) }
 
     private func setMode(_ mode: GateMode) {
@@ -108,9 +120,11 @@ public final class StatusItemController {
         guard let menu = modeMenu else { return }
         for item in menu.items {
             switch item.title {
-            case "Present": item.state = modeState.current == .present ? .on : .off
-            case "Remote":  item.state = modeState.current == .remote ? .on : .off
-            case "Away":    item.state = modeState.current == .away ? .on : .off
+            case "Present":                item.state = modeState.current == .present ? .on : .off
+            case "Remote":                 item.state = modeState.current == .remote ? .on : .off
+            case "Away":                   item.state = modeState.current == .away ? .on : .off
+            case "Observer":               item.state = modeState.current == .observer ? .on : .off
+            case "Observer (Workspace)":   item.state = modeState.current == .observerWorkspace ? .on : .off
             default: break
             }
         }
@@ -137,6 +151,20 @@ public final class StatusItemController {
                 string: " A",
                 attributes: [.foregroundColor: Self.tealColor,
                              .font: NSFont.systemFont(ofSize: 11, weight: .bold)])
+        case .observer:
+            btn.image = NSImage(systemSymbolName: "eye",
+                                accessibilityDescription: "claude-gate observer")
+            btn.attributedTitle = NSAttributedString(
+                string: " O",
+                attributes: [.foregroundColor: Self.tealColor,
+                             .font: NSFont.systemFont(ofSize: 11, weight: .bold)])
+        case .observerWorkspace:
+            btn.image = NSImage(systemSymbolName: "eye",
+                                accessibilityDescription: "claude-gate observer workspace")
+            btn.attributedTitle = NSAttributedString(
+                string: " OW",
+                attributes: [.foregroundColor: Self.tealColor,
+                             .font: NSFont.systemFont(ofSize: 11, weight: .bold)])
         }
     }
 
@@ -160,8 +188,9 @@ public final class StatusItemController {
 
     public func refreshBadge() {
         guard let btn = statusItem.button else { return }
-        if modeState.current == .away {
-            return  // away badge handled by updateIconBadge()
+        let mode = modeState.current
+        if mode == .away || mode == .observer || mode == .observerWorkspace {
+            return  // badge handled by updateIconBadge()
         }
         let n = store.pendingRequests.count
         if n > 0 {
