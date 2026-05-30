@@ -12,15 +12,17 @@ public final class HTTPServer {
     private let store: PermissionStore
     private let modeState: GateModeState
     private let activityLog: ActivityLog
+    private let dangerNotifier: DangerNotifier
     private var listener: NWListener?
     private let logger = Logger(subsystem: "com.claude-gate", category: "http")
 
-    public init(config: PolicyConfig, tracker: SubagentTracker, store: PermissionStore, modeState: GateModeState, activityLog: ActivityLog) {
+    public init(config: PolicyConfig, tracker: SubagentTracker, store: PermissionStore, modeState: GateModeState, activityLog: ActivityLog, dangerNotifier: DangerNotifier) {
         self._config = config
         self.tracker = tracker
         self.store = store
         self.modeState = modeState
         self.activityLog = activityLog
+        self.dangerNotifier = dangerNotifier
     }
 
     public func updateConfig(_ newConfig: PolicyConfig) {
@@ -218,6 +220,12 @@ public final class HTTPServer {
                 isObserver: true, sessionID: sessionID
             )
             await MainActor.run { activityLog.append(entry) }
+
+            if let signal = DangerDetector.check(toolName: toolName, inputPreview: inputPreview, filePath: filePath, cwd: cwd) {
+                dangerNotifier.notify(signal: signal, toolName: toolName, inputPreview: inputPreview)
+                logger.warning("Observer DANGER: \(signal.reason) — \(toolName): \(inputPreview)")
+            }
+
             logger.info("Observer: \(toolName) allowed (permission_mode=\(permissionMode))")
             return
         }

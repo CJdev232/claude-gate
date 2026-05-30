@@ -40,14 +40,17 @@ public struct ServerConfig: Codable, Equatable {
     public var port: Int
     public var timeout: Int
     public var remoteTimeout: Int
+    public var ntfyEndpoint: String?
 
     enum CodingKeys: String, CodingKey {
         case port, timeout
         case remoteTimeout = "remote_timeout"
+        case ntfyEndpoint = "ntfy_endpoint"
     }
 
-    public init(port: Int = 9191, timeout: Int = 30, remoteTimeout: Int = 300) {
+    public init(port: Int = 9191, timeout: Int = 30, remoteTimeout: Int = 300, ntfyEndpoint: String? = nil) {
         self.port = port; self.timeout = timeout; self.remoteTimeout = remoteTimeout
+        self.ntfyEndpoint = ntfyEndpoint
     }
 
     public init(from decoder: Decoder) throws {
@@ -55,6 +58,7 @@ public struct ServerConfig: Codable, Equatable {
         port = try c.decodeIfPresent(Int.self, forKey: .port) ?? 9191
         timeout = try c.decodeIfPresent(Int.self, forKey: .timeout) ?? 30
         remoteTimeout = try c.decodeIfPresent(Int.self, forKey: .remoteTimeout) ?? 300
+        ntfyEndpoint = try c.decodeIfPresent(String.self, forKey: .ntfyEndpoint)
     }
 }
 

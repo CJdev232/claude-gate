@@ -20,12 +20,15 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         let modeState = GateModeState()
         self.modeState = modeState
 
-        let tracker     = SubagentTracker()
-        let store       = PermissionStore()
-        let activityLog = ActivityLog()
-        let config      = (try? PolicyConfig.load(from: configURL)) ?? PolicyConfig.defaultConfig()
+        let tracker        = SubagentTracker()
+        let store          = PermissionStore()
+        let activityLog    = ActivityLog()
+        let dangerNotifier = DangerNotifier()
+        let config         = (try? PolicyConfig.load(from: configURL)) ?? PolicyConfig.defaultConfig()
 
-        let server = HTTPServer(config: config, tracker: tracker, store: store, modeState: modeState, activityLog: activityLog)
+        dangerNotifier.updateNtfyEndpoint(config.server.ntfyEndpoint)
+
+        let server = HTTPServer(config: config, tracker: tracker, store: store, modeState: modeState, activityLog: activityLog, dangerNotifier: dangerNotifier)
         self.httpServer = server
 
         startServer(server)
@@ -48,6 +51,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         self.fileWatcher = FileWatcher(url: configURL) { [weak self, weak server, weak ctrl] in
             if let newCfg = try? PolicyConfig.load(from: configURL) {
                 server?.updateConfig(newCfg)
+                dangerNotifier.updateNtfyEndpoint(newCfg.server.ntfyEndpoint)
                 Task { @MainActor in ctrl?.updateConfig(newCfg) }
                 self?.logger.info("Config reloaded")
             } else {
