@@ -183,6 +183,13 @@ public final class HTTPServer {
         let cwd = json["cwd"] as? String
         let permissionMode = json["permission_mode"] as? String ?? "default"
 
+        // AskUserQuestion: don't decide — let Claude Code handle it natively
+        if toolName == "AskUserQuestion" {
+            reply(conn, json: ["ok": true])
+            logger.info("Passthrough: \(toolName) (no hook decision)")
+            return
+        }
+
         let inputPreview: String
         let filePath: String?
         if let toolInput = json["tool_input"] as? [String: Any] {
