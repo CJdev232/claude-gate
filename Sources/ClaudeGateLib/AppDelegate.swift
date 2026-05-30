@@ -6,6 +6,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusController: StatusItemController?
     private var httpServer: HTTPServer?
     private var fileWatcher: FileWatcher?
+    private var refreshTimer: Timer?
     private let logger = Logger(subsystem: "com.claude-gate", category: "app")
     private var modeState: GateModeState?
 
@@ -36,7 +37,6 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         let ctrl = StatusItemController(store: store, config: config, configURL: configURL, modeState: modeState, activityLog: activityLog)
         self.statusController = ctrl
 
-        // Badge + auto-open refresh — use .common so it fires even during modal dialogs
         let timer = Timer(timeInterval: 0.2, repeats: true) { [weak ctrl] _ in
             Task { @MainActor in
                 ctrl?.refreshBadge()
@@ -45,6 +45,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         RunLoop.main.add(timer, forMode: .common)
+        self.refreshTimer = timer
 
         // Hot-reload: push new config to both server and UI when file changes
         let configURL = self.configURL
@@ -61,6 +62,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     public func applicationWillTerminate(_ notification: Notification) {
+        refreshTimer?.invalidate()
         httpServer?.stop()
     }
 

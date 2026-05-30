@@ -76,11 +76,12 @@ public struct MenuBarView: View {
         } else {
             ScrollView {
                 VStack(spacing: 0) {
-                    ForEach(store.pendingRequests) { req in
+                    ForEach(Array(store.pendingRequests.enumerated()), id: \.element.id) { idx, req in
                         RequestRowView(
                             request: req,
                             onAllow: { store.decide(id: req.id, allow: true) },
-                            onDeny:  { store.decide(id: req.id, allow: false) }
+                            onDeny:  { store.decide(id: req.id, allow: false) },
+                            isFirst: idx == 0
                         )
                         if req.id != store.pendingRequests.last?.id { Divider() }
                     }

@@ -4,14 +4,15 @@ public struct RequestRowView: View {
     public let request: PendingRequest
     public let onAllow: () -> Void
     public let onDeny: () -> Void
+    public let isFirst: Bool
 
     // Accessible color system: cyan ✓ / orange ◦ / pink ✕
     private static let cyanColor   = Color(red: 0/255,   green: 178/255, blue: 169/255) // #00B2A9
     private static let orangeColor = Color(red: 230/255, green: 159/255, blue: 0/255)   // #E69F00
     private static let pinkColor   = Color(red: 204/255, green: 121/255, blue: 167/255) // #CC79A7
 
-    public init(request: PendingRequest, onAllow: @escaping () -> Void, onDeny: @escaping () -> Void) {
-        self.request = request; self.onAllow = onAllow; self.onDeny = onDeny
+    public init(request: PendingRequest, onAllow: @escaping () -> Void, onDeny: @escaping () -> Void, isFirst: Bool = false) {
+        self.request = request; self.onAllow = onAllow; self.onDeny = onDeny; self.isFirst = isFirst
     }
 
     public var body: some View {
@@ -45,7 +46,7 @@ public struct RequestRowView: View {
                 .background(Self.pinkColor)
                 .foregroundColor(.white)
                 .cornerRadius(4)
-                .keyboardShortcut("n", modifiers: [.control, .shift])
+                .if(isFirst) { $0.keyboardShortcut("n", modifiers: [.control, .shift]) }
 
                 Button(action: onAllow) {
                     Text("✓ Allow")
@@ -56,7 +57,7 @@ public struct RequestRowView: View {
                 .background(Self.cyanColor)
                 .foregroundColor(.white)
                 .cornerRadius(4)
-                .keyboardShortcut("y", modifiers: [.control, .shift])
+                .if(isFirst) { $0.keyboardShortcut("y", modifiers: [.control, .shift]) }
 
                 Spacer()
                 Text("⌃⇧N / ⌃⇧Y")
@@ -70,5 +71,11 @@ public struct RequestRowView: View {
     private func timeAgo(_ date: Date) -> String {
         let s = Int(-date.timeIntervalSinceNow)
         return s < 60 ? "\(s)s ago" : "\(s / 60)m ago"
+    }
+}
+
+extension View {
+    @ViewBuilder func `if`<T: View>(_ condition: Bool, transform: (Self) -> T) -> some View {
+        if condition { transform(self) } else { self }
     }
 }

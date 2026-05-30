@@ -31,7 +31,7 @@ public struct ToolPolicy: Codable, Equatable {
         parent = try c.decode(PolicyValue.self, forKey: .parent)
         subagent = try c.decode(PolicyValue.self, forKey: .subagent)
         timeout = try c.decode(PolicyValue.self, forKey: .timeout)
-        awayWorkspace = try c.decodeIfPresent(PolicyValue.self, forKey: .awayWorkspace) ?? timeout
+        awayWorkspace = try c.decodeIfPresent(PolicyValue.self, forKey: .awayWorkspace) ?? .allow
         awayOutside = try c.decodeIfPresent(PolicyValue.self, forKey: .awayOutside) ?? .deny
     }
 }
@@ -111,7 +111,8 @@ public struct PolicyConfig: Codable {
     /// Returns true if the given path is inside any configured workspace.
     public func isInsideWorkspace(_ path: String) -> Bool {
         guard !workspaces.isEmpty else { return false }
-        for ws in workspaces {
+        for rawWs in workspaces {
+            let ws = (rawWs as NSString).expandingTildeInPath
             if ws.hasSuffix("/*") {
                 let dir = String(ws.dropLast(2))
                 if path.hasPrefix(dir + "/") { return true }
