@@ -12,6 +12,7 @@ public final class StatusItemController {
     private var clickMonitor: Any?
     private var wasAutoOpened = false
     private let modeState: GateModeState
+    private let activityLog: ActivityLog
     private var modeMenu: NSMenu?
     private let logger = Logger(subsystem: "com.claude-gate", category: "ui")
 
@@ -22,8 +23,9 @@ public final class StatusItemController {
         red: 0/255, green: 178/255, blue: 169/255, alpha: 1  // #00B2A9
     )
 
-    public init(store: PermissionStore, config: PolicyConfig, configURL: URL, modeState: GateModeState) {
-        self.store = store; self.config = config; self.configURL = configURL; self.modeState = modeState
+    public init(store: PermissionStore, config: PolicyConfig, configURL: URL, modeState: GateModeState, activityLog: ActivityLog) {
+        self.store = store; self.config = config; self.configURL = configURL
+        self.modeState = modeState; self.activityLog = activityLog
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         setupButton()
         setupPopover()
@@ -56,6 +58,7 @@ public final class StatusItemController {
         popover.contentViewController = NSHostingController(
             rootView: MenuBarView(
                 store: store,
+                activityLog: activityLog,
                 config: Binding(get: { self.config }, set: { self.config = $0 }),
                 onConfigChanged: { [weak self] in self?.persistConfig() },
                 onQuit: { NSApplication.shared.terminate(nil) }
@@ -167,6 +170,14 @@ public final class StatusItemController {
                 attributes: [
                     .foregroundColor: Self.orangeColor,
                     .font: NSFont.systemFont(ofSize: 12, weight: .semibold)
+                ]
+            )
+        } else if activityLog.totalCount > 0 {
+            btn.attributedTitle = NSAttributedString(
+                string: " ⦿ \(activityLog.totalCount)",
+                attributes: [
+                    .foregroundColor: Self.tealColor,
+                    .font: NSFont.systemFont(ofSize: 11, weight: .medium)
                 ]
             )
         } else if modeState.current == .remote {

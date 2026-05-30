@@ -11,14 +11,16 @@ public final class HTTPServer {
     private let tracker: SubagentTracker
     private let store: PermissionStore
     private let modeState: GateModeState
+    private let activityLog: ActivityLog
     private var listener: NWListener?
     private let logger = Logger(subsystem: "com.claude-gate", category: "http")
 
-    public init(config: PolicyConfig, tracker: SubagentTracker, store: PermissionStore, modeState: GateModeState) {
+    public init(config: PolicyConfig, tracker: SubagentTracker, store: PermissionStore, modeState: GateModeState, activityLog: ActivityLog) {
         self._config = config
         self.tracker = tracker
         self.store = store
         self.modeState = modeState
+        self.activityLog = activityLog
     }
 
     public func updateConfig(_ newConfig: PolicyConfig) {
@@ -179,6 +181,7 @@ public final class HTTPServer {
         }
 
         let cwd = json["cwd"] as? String
+        let permissionMode = json["permission_mode"] as? String ?? "default"
 
         let inputPreview: String
         let filePath: String?
@@ -198,7 +201,19 @@ public final class HTTPServer {
         let pol = config.policy(for: toolName)
         let mode = await modeState.current
 
-        logger.info("Permission request: \(toolName) [\(isSubagent ? "subagent" : "parent")] mode=\(mode.rawValue)")
+        logger.info("Permission request: \(toolName) [\(isSubagent ? "subagent" : "parent")] mode=\(mode.rawValue) perm=\(permissionMode)")
+
+        // Observer mode: allow immediately, log, don't block
+        if permissionMode == "auto" || permissionMode == "bypassPermissions" {
+            replyPermission(conn, behavior: "allow")
+            let entry = ActivityEntry(
+                toolName: toolName, inputPreview: inputPreview, decision: "allow",
+                isObserver: true, sessionID: sessionID
+            )
+            await MainActor.run { activityLog.append(entry) }
+            logger.info("Observer: \(toolName) allowed (permission_mode=\(permissionMode))")
+            return
+        }
 
         let alwaysInsideTools: Set<String> = ["Task", "AskUserQuestion"]
         let isInWorkspace: Bool
@@ -216,15 +231,25 @@ public final class HTTPServer {
             isInWorkspace = false
         }
 
+        func logDecision(_ decision: String) {
+            let entry = ActivityEntry(
+                toolName: toolName, inputPreview: inputPreview, decision: decision,
+                isObserver: false, sessionID: sessionID
+            )
+            Task { @MainActor in activityLog.append(entry) }
+        }
+
         switch mode {
         case .present, .remote:
             let policyValue = isSubagent ? pol.subagent : pol.parent
             switch policyValue {
             case .allow:
                 replyPermission(conn, behavior: "allow")
+                logDecision("allow")
                 logger.info("Decision for \(toolName): allow (policy)")
             case .deny:
                 replyPermission(conn, behavior: "deny")
+                logDecision("deny")
                 logger.info("Decision for \(toolName): deny (policy)")
             case .ask:
                 let requestID = UUID()
@@ -247,8 +272,10 @@ public final class HTTPServer {
                     timeoutPolicy: pol.timeout
                 )
                 conn.stateUpdateHandler = nil
-                replyPermission(conn, behavior: decision == .allow ? "allow" : "deny")
-                logger.info("Decision for \(toolName): \(decision == .allow ? "allow" : "deny") (user)")
+                let allowed = decision == .allow
+                replyPermission(conn, behavior: allowed ? "allow" : "deny")
+                logDecision(allowed ? "allow" : "deny")
+                logger.info("Decision for \(toolName): \(allowed ? "allow" : "deny") (user)")
             }
 
         case .away:
@@ -261,6 +288,7 @@ public final class HTTPServer {
                 behavior = "deny"
             }
             replyPermission(conn, behavior: behavior)
+            logDecision(behavior)
             logger.info("Decision for \(toolName): \(behavior) (away, \(isInWorkspace ? "workspace" : "outside"))")
         }
     }

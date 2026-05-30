@@ -20,16 +20,17 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         let modeState = GateModeState()
         self.modeState = modeState
 
-        let tracker = SubagentTracker()
-        let store   = PermissionStore()
-        let config  = (try? PolicyConfig.load(from: configURL)) ?? PolicyConfig.defaultConfig()
+        let tracker     = SubagentTracker()
+        let store       = PermissionStore()
+        let activityLog = ActivityLog()
+        let config      = (try? PolicyConfig.load(from: configURL)) ?? PolicyConfig.defaultConfig()
 
-        let server = HTTPServer(config: config, tracker: tracker, store: store, modeState: modeState)
+        let server = HTTPServer(config: config, tracker: tracker, store: store, modeState: modeState, activityLog: activityLog)
         self.httpServer = server
 
         startServer(server)
 
-        let ctrl = StatusItemController(store: store, config: config, configURL: configURL, modeState: modeState)
+        let ctrl = StatusItemController(store: store, config: config, configURL: configURL, modeState: modeState, activityLog: activityLog)
         self.statusController = ctrl
 
         // Badge + auto-open refresh — use .common so it fires even during modal dialogs
