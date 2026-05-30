@@ -12,6 +12,7 @@ public final class StatusItemController {
     private var clickMonitor: Any?
     private var wasAutoOpened = false
     private let modeState: GateModeState
+    private let activityLog: ActivityLog
     private var modeMenu: NSMenu?
     private let logger = Logger(subsystem: "com.claude-gate", category: "ui")
 
@@ -22,8 +23,9 @@ public final class StatusItemController {
         red: 0/255, green: 178/255, blue: 169/255, alpha: 1  // #00B2A9
     )
 
-    public init(store: PermissionStore, config: PolicyConfig, configURL: URL, modeState: GateModeState) {
-        self.store = store; self.config = config; self.configURL = configURL; self.modeState = modeState
+    public init(store: PermissionStore, config: PolicyConfig, configURL: URL, modeState: GateModeState, activityLog: ActivityLog) {
+        self.store = store; self.config = config; self.configURL = configURL
+        self.modeState = modeState; self.activityLog = activityLog
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         setupButton()
         setupPopover()
@@ -56,7 +58,8 @@ public final class StatusItemController {
         popover.contentViewController = NSHostingController(
             rootView: MenuBarView(
                 store: store,
-                config: Binding(get: { self.config }, set: { self.config = $0 }),
+                activityLog: activityLog,
+                config: Binding(get: { [weak self] in self?.config ?? PolicyConfig.defaultConfig() }, set: { [weak self] in self?.config = $0 }),
                 onConfigChanged: { [weak self] in self?.persistConfig() },
                 onQuit: { NSApplication.shared.terminate(nil) }
             )
@@ -82,6 +85,16 @@ public final class StatusItemController {
 
         menu.addItem(NSMenuItem.separator())
 
+        let observerItem = NSMenuItem(title: "Observer", action: #selector(setObserver), keyEquivalent: "")
+        observerItem.target = self
+        menu.addItem(observerItem)
+
+        let observerWsItem = NSMenuItem(title: "Observer (Workspace)", action: #selector(setObserverWorkspace), keyEquivalent: "")
+        observerWsItem.target = self
+        menu.addItem(observerWsItem)
+
+        menu.addItem(NSMenuItem.separator())
+
         let quitItem = NSMenuItem(title: "Quit claude-gate", action: #selector(quitApp), keyEquivalent: "")
         quitItem.target = self
         menu.addItem(quitItem)
@@ -92,6 +105,8 @@ public final class StatusItemController {
     @objc private func setPresent() { setMode(.present) }
     @objc private func setRemote() { setMode(.remote) }
     @objc private func setAway() { setMode(.away) }
+    @objc private func setObserver() { setMode(.observer) }
+    @objc private func setObserverWorkspace() { setMode(.observerWorkspace) }
     @objc private func quitApp() { NSApplication.shared.terminate(nil) }
 
     private func setMode(_ mode: GateMode) {
@@ -105,9 +120,11 @@ public final class StatusItemController {
         guard let menu = modeMenu else { return }
         for item in menu.items {
             switch item.title {
-            case "Present": item.state = modeState.current == .present ? .on : .off
-            case "Remote":  item.state = modeState.current == .remote ? .on : .off
-            case "Away":    item.state = modeState.current == .away ? .on : .off
+            case "Present":                item.state = modeState.current == .present ? .on : .off
+            case "Remote":                 item.state = modeState.current == .remote ? .on : .off
+            case "Away":                   item.state = modeState.current == .away ? .on : .off
+            case "Observer":               item.state = modeState.current == .observer ? .on : .off
+            case "Observer (Workspace)":   item.state = modeState.current == .observerWorkspace ? .on : .off
             default: break
             }
         }
@@ -134,6 +151,20 @@ public final class StatusItemController {
                 string: " A",
                 attributes: [.foregroundColor: Self.tealColor,
                              .font: NSFont.systemFont(ofSize: 11, weight: .bold)])
+        case .observer:
+            btn.image = NSImage(systemSymbolName: "eye",
+                                accessibilityDescription: "claude-gate observer")
+            btn.attributedTitle = NSAttributedString(
+                string: " O",
+                attributes: [.foregroundColor: Self.tealColor,
+                             .font: NSFont.systemFont(ofSize: 11, weight: .bold)])
+        case .observerWorkspace:
+            btn.image = NSImage(systemSymbolName: "eye",
+                                accessibilityDescription: "claude-gate observer workspace")
+            btn.attributedTitle = NSAttributedString(
+                string: " OW",
+                attributes: [.foregroundColor: Self.tealColor,
+                             .font: NSFont.systemFont(ofSize: 11, weight: .bold)])
         }
     }
 
@@ -157,8 +188,9 @@ public final class StatusItemController {
 
     public func refreshBadge() {
         guard let btn = statusItem.button else { return }
-        if modeState.current == .away {
-            return  // away badge handled by updateIconBadge()
+        let mode = modeState.current
+        if mode == .away || mode == .observer || mode == .observerWorkspace {
+            return  // badge handled by updateIconBadge()
         }
         let n = store.pendingRequests.count
         if n > 0 {
@@ -167,6 +199,14 @@ public final class StatusItemController {
                 attributes: [
                     .foregroundColor: Self.orangeColor,
                     .font: NSFont.systemFont(ofSize: 12, weight: .semibold)
+                ]
+            )
+        } else if activityLog.totalCount > 0 {
+            btn.attributedTitle = NSAttributedString(
+                string: " ⦿ \(activityLog.totalCount)",
+                attributes: [
+                    .foregroundColor: Self.tealColor,
+                    .font: NSFont.systemFont(ofSize: 11, weight: .medium)
                 ]
             )
         } else if modeState.current == .remote {

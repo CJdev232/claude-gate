@@ -6,6 +6,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusController: StatusItemController?
     private var httpServer: HTTPServer?
     private var fileWatcher: FileWatcher?
+    private var refreshTimer: Timer?
     private let logger = Logger(subsystem: "com.claude-gate", category: "app")
     private var modeState: GateModeState?
 
@@ -20,19 +21,22 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         let modeState = GateModeState()
         self.modeState = modeState
 
-        let tracker = SubagentTracker()
-        let store   = PermissionStore()
-        let config  = (try? PolicyConfig.load(from: configURL)) ?? PolicyConfig.defaultConfig()
+        let tracker        = SubagentTracker()
+        let store          = PermissionStore()
+        let activityLog    = ActivityLog()
+        let dangerNotifier = DangerNotifier()
+        let config         = (try? PolicyConfig.load(from: configURL)) ?? PolicyConfig.defaultConfig()
 
-        let server = HTTPServer(config: config, tracker: tracker, store: store, modeState: modeState)
+        dangerNotifier.updateNtfyEndpoint(config.server.ntfyEndpoint)
+
+        let server = HTTPServer(config: config, tracker: tracker, store: store, modeState: modeState, activityLog: activityLog, dangerNotifier: dangerNotifier)
         self.httpServer = server
 
         startServer(server)
 
-        let ctrl = StatusItemController(store: store, config: config, configURL: configURL, modeState: modeState)
+        let ctrl = StatusItemController(store: store, config: config, configURL: configURL, modeState: modeState, activityLog: activityLog)
         self.statusController = ctrl
 
-        // Badge + auto-open refresh — use .common so it fires even during modal dialogs
         let timer = Timer(timeInterval: 0.2, repeats: true) { [weak ctrl] _ in
             Task { @MainActor in
                 ctrl?.refreshBadge()
@@ -41,12 +45,14 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         RunLoop.main.add(timer, forMode: .common)
+        self.refreshTimer = timer
 
         // Hot-reload: push new config to both server and UI when file changes
         let configURL = self.configURL
         self.fileWatcher = FileWatcher(url: configURL) { [weak self, weak server, weak ctrl] in
             if let newCfg = try? PolicyConfig.load(from: configURL) {
                 server?.updateConfig(newCfg)
+                dangerNotifier.updateNtfyEndpoint(newCfg.server.ntfyEndpoint)
                 Task { @MainActor in ctrl?.updateConfig(newCfg) }
                 self?.logger.info("Config reloaded")
             } else {
@@ -56,6 +62,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     public func applicationWillTerminate(_ notification: Notification) {
+        refreshTimer?.invalidate()
         httpServer?.stop()
     }
 

@@ -31,7 +31,7 @@ public struct ToolPolicy: Codable, Equatable {
         parent = try c.decode(PolicyValue.self, forKey: .parent)
         subagent = try c.decode(PolicyValue.self, forKey: .subagent)
         timeout = try c.decode(PolicyValue.self, forKey: .timeout)
-        awayWorkspace = try c.decodeIfPresent(PolicyValue.self, forKey: .awayWorkspace) ?? timeout
+        awayWorkspace = try c.decodeIfPresent(PolicyValue.self, forKey: .awayWorkspace) ?? .allow
         awayOutside = try c.decodeIfPresent(PolicyValue.self, forKey: .awayOutside) ?? .deny
     }
 }
@@ -40,14 +40,17 @@ public struct ServerConfig: Codable, Equatable {
     public var port: Int
     public var timeout: Int
     public var remoteTimeout: Int
+    public var ntfyEndpoint: String?
 
     enum CodingKeys: String, CodingKey {
         case port, timeout
         case remoteTimeout = "remote_timeout"
+        case ntfyEndpoint = "ntfy_endpoint"
     }
 
-    public init(port: Int = 9191, timeout: Int = 30, remoteTimeout: Int = 300) {
+    public init(port: Int = 9191, timeout: Int = 30, remoteTimeout: Int = 300, ntfyEndpoint: String? = nil) {
         self.port = port; self.timeout = timeout; self.remoteTimeout = remoteTimeout
+        self.ntfyEndpoint = ntfyEndpoint
     }
 
     public init(from decoder: Decoder) throws {
@@ -55,6 +58,7 @@ public struct ServerConfig: Codable, Equatable {
         port = try c.decodeIfPresent(Int.self, forKey: .port) ?? 9191
         timeout = try c.decodeIfPresent(Int.self, forKey: .timeout) ?? 30
         remoteTimeout = try c.decodeIfPresent(Int.self, forKey: .remoteTimeout) ?? 300
+        ntfyEndpoint = try c.decodeIfPresent(String.self, forKey: .ntfyEndpoint)
     }
 }
 
@@ -107,7 +111,8 @@ public struct PolicyConfig: Codable {
     /// Returns true if the given path is inside any configured workspace.
     public func isInsideWorkspace(_ path: String) -> Bool {
         guard !workspaces.isEmpty else { return false }
-        for ws in workspaces {
+        for rawWs in workspaces {
+            let ws = (rawWs as NSString).expandingTildeInPath
             if ws.hasSuffix("/*") {
                 let dir = String(ws.dropLast(2))
                 if path.hasPrefix(dir + "/") { return true }
