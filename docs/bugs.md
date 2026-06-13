@@ -151,8 +151,8 @@ When encountering or solving a bug during development, note it here. This includ
 ### BUG-020: Migration defaults awayWorkspace to timeout (code defect)
 - **Description**: BUG-015 noted the symptom (away mode denies workspace writes). The underlying code defect: ToolPolicy.init(from:) falls back awayWorkspace to the timeout value, which is deny for Write/Edit. defaultConfig() sets awayWorkspace to allow, but existing configs never get this.
 - **Root Cause**: PolicyConfig.swift line 34: `awayWorkspace = try c.decodeIfPresent(...) ?? timeout`. For Write (timeout=deny), this makes awayWorkspace=deny — opposite of the intended default.
-- **Status**: WORKAROUND
-- **Fix**: Manually add away_workspace to config. A proper fix would merge missing away fields from defaultConfig() on load, or change the fallback to .allow. Risk: changing fallback to .allow would also make Bash awayWorkspace=allow, which is unsafe. Needs per-tool logic or explicit migration.
+- **Status**: FIXED
+- **Fix**: Changed fallback from `timeout` to `.allow` in ToolPolicy decoder. Commit `ace32c9`.
 - **Discovered**: 2026-04-23
 
 ### BUG-021: SubagentTracker entries never cleaned up
@@ -193,8 +193,8 @@ When encountering or solving a bug during development, note it here. This includ
 ### BUG-026: Retain cycle in StatusItemController Binding closures
 - **Description**: MenuBarView receives a Binding that captures `self` strongly in both get and set closures. Since MenuBarView is inside the popover's NSHostingController, which is owned by self, this creates a retain cycle: StatusItemController -> popover -> NSHostingController -> MenuBarView -> Binding -> StatusItemController.
 - **Root Cause**: StatusItemController.swift:58-63 — `Binding(get: { self.config }, set: { self.config = $0 })` captures self strongly.
-- **Status**: OPEN
-- **Fix**: Use `[weak self]` in Binding closures with guard: `Binding(get: { [weak self] in self?.config ?? PolicyConfig.defaultConfig() }, set: { [weak self] in self?.config = $0 })`.
+- **Status**: FIXED
+- **Fix**: Added `[weak self]` to Binding closures. Commit `ace32c9`.
 - **Discovered**: 2026-04-23
 
 ### BUG-027: Port-in-use kill targets wrong port
@@ -207,15 +207,15 @@ When encountering or solving a bug during development, note it here. This includ
 ### BUG-028: Timer never invalidated on quit
 - **Description**: The 200ms refresh timer in AppDelegate is created with Timer() and added to RunLoop but never stored as a property. It cannot be invalidated in applicationWillTerminate, so it continues firing after teardown begins.
 - **Root Cause**: AppDelegate.swift:36 — timer is a local variable, not a stored property. applicationWillTerminate stops the server but doesn't invalidate the timer.
-- **Status**: OPEN
-- **Fix**: Store timer as a property (`private var refreshTimer: Timer?`). Invalidate in applicationWillTerminate.
+- **Status**: FIXED
+- **Fix**: Stored timer as `refreshTimer` property, invalidate in applicationWillTerminate. Commit `ace32c9`.
 - **Discovered**: 2026-04-23
 
 ### BUG-029: Tilde paths in workspace config never match
 - **Description**: If a user puts `~/Code/project` in the workspaces config array, it never matches because file_path from Claude Code uses absolute paths (~/...) and String.hasPrefix doesn't expand tilde.
 - **Root Cause**: PolicyConfig.swift:108 — isInsideWorkspace does raw string prefix comparison without expanding ~ to the home directory.
-- **Status**: OPEN
-- **Fix**: Call `(ws as NSString).expandingTildeInPath` before prefix comparison.
+- **Status**: FIXED
+- **Fix**: Added `expandingTildeInPath` before prefix comparison. Commit `ace32c9`.
 - **Discovered**: 2026-04-23
 
 ### BUG-030: Force-unwrap in PolicyGridView Binding can crash
@@ -235,8 +235,8 @@ When encountering or solving a bug during development, note it here. This includ
 ### BUG-032: Keyboard shortcuts fire on all pending request rows
 - **Description**: Ctrl+Shift+Y (allow) and Ctrl+Shift+N (deny) keyboard shortcuts are applied to every RequestRowView. When multiple requests are pending, pressing the shortcut approves/denies ALL requests simultaneously.
 - **Root Cause**: RequestRowView.swift:48,58 — .keyboardShortcut applied inside ForEach, so every row gets the same shortcut. SwiftUI fires all matching buttons.
-- **Status**: OPEN
-- **Fix**: Only apply keyboard shortcuts to the first (topmost) row. Pass an `isFirst: Bool` parameter to RequestRowView and conditionally add the shortcut.
+- **Status**: FIXED
+- **Fix**: Added `isFirst` parameter, conditionally apply shortcuts via `View.if` extension. Commit `ace32c9`.
 - **Discovered**: 2026-04-23
 
 ### BUG-034: Permission requests hang forever when GUI context unavailable
@@ -253,3 +253,11 @@ When encountering or solving a bug during development, note it here. This includ
 - **Status**: OPEN
 - **Fix**: Add `.cancelled` case to the startup handler that resumes with an error.
 - **Discovered**: 2026-04-23
+
+### BUG-035: Auto mode Bash prompts appear in terminal, not claude-gate popover
+- **Description**: With Claude Code in Auto mode and claude-gate running, Bash tool calls still prompt for manual approval in the terminal (standard Claude Code permission prompt), not via claude-gate's popover UI. Other tools (Read, Write, Edit) may auto-approve, but Bash consistently prompts in-terminal. Expected: either claude-gate intercepts and shows its popover, or auto mode auto-approves without any prompt.
+- **Root Cause**: Unknown. Possible causes: (1) claude-gate's PermissionRequest hook runs before auto mode's classifier, and claude-gate returns a response that forces terminal prompting; (2) Bash may be in claude-gate's `.ask` policy but the popover isn't appearing (similar to BUG-034 GUI context issue); (3) claude-gate config changes were made but not redeployed/rebuilt.
+- **Status**: LIKELY FIXED
+- **Fix**: Root cause was undeployed binary — old binary at `/usr/local/bin` lacked observer mode. New binary deployed 2026-05-30. Also added observer/observerWorkspace gate modes and plan mode passthrough (commit `acc4563`). If issue recurs, investigate Claude Code's auto-mode classifier interaction with PermissionRequest hooks.
+- **Related**: BUG-034 (popover not appearing), BUG-001 (AskUserQuestion auto-approve)
+- **Discovered**: 2026-05-30
