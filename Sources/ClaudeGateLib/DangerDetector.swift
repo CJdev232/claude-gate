@@ -15,7 +15,7 @@ public final class DangerDetector {
         ("git\\s+reset\\s+--hard", "Git hard reset"),
         ("git\\s+clean\\s+-[^\\s]*f", "Git clean force"),
         ("DROP\\s+(TABLE|DATABASE)", "SQL drop"),
-        ("pkill\\s+-f", "Kill by full command match (broad)"),
+        ("pkill(\\s+-[^\\s]+)*\\s+(-f|--full)(\\s|$)", "Kill by full command match (pkill -f) — prefer: pgrep <name>, then kill <pid>"),
         ("chmod\\s+777", "World-writable permissions"),
         (">(\\s|$)/dev/sd", "Direct device write"),
     ]

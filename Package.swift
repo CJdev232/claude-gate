@@ -23,5 +23,10 @@ let package = Package(
                 .linkedFramework("ServiceManagement"),
             ]
         ),
+        .testTarget(
+            name: "ClaudeGateTests",
+            dependencies: ["ClaudeGateLib"],
+            path: "Tests/ClaudeGateTests"
+        ),
     ]
 )
